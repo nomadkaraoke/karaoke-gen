@@ -13,7 +13,7 @@ import {
   markBackendReachable,
 } from './backend-status';
 import { ApiError } from './api-error';
-import { isLocalPage } from './local-host';
+import { isLocalPage, localApiOverride } from './local-host';
 import { putFileToSignedUrl, uploadFilesToSignedUrls, type UploadProgress } from './upload';
 
 // In development, use relative URLs to go through Next.js proxy (avoids CORS)
@@ -22,7 +22,7 @@ import { putFileToSignedUrl, uploadFilesToSignedUrls, type UploadProgress } from
 // Every client that builds API URLs (lib/api/*) must use API_BASE_URL, so a local page never
 // sends its bearer token to production.
 export const API_BASE_URL = isLocalPage()
-  ? new URLSearchParams(location.search).get('baseApiUrl') || ('' /* Relative URL - goes to the local server */)
+  ? localApiOverride(location.search) || ('' /* Relative URL - goes to the local server */)
   : (process.env.NEXT_PUBLIC_API_URL || 'https://api.nomadkaraoke.com');
 
 // Token management - stored in localStorage (client-side only)

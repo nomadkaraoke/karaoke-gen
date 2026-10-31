@@ -6,14 +6,14 @@
 
 const PROD = 'https://api.nomadkaraoke.com'
 
-function setHostname(hostname: string) {
+function setHostname(hostname: string, search = '') {
   delete (window as unknown as { location?: Location }).location
-  Object.defineProperty(window, 'location', { value: { hostname, search: '', href: `http://${hostname}/`, pathname: '/' } as Location, configurable: true, writable: true })
+  Object.defineProperty(window, 'location', { value: { hostname, search, href: `http://${hostname}/${search}`, pathname: '/' } as Location, configurable: true, writable: true })
 }
 
-async function capturePostedUrl(hostname: string, client: 'autoCorrect' | 'customLyrics'): Promise<string> {
+async function capturePostedUrl(hostname: string, client: 'autoCorrect' | 'customLyrics', search = ''): Promise<string> {
   const original = window.location
-  setHostname(hostname)
+  setHostname(hostname, search)
   let url = ''
   const originalFetch = global.fetch
   global.fetch = jest.fn(async (u: RequestInfo) => {
@@ -55,6 +55,19 @@ describe.each(['autoCorrect', 'customLyrics'] as const)('%s API base', (client) 
     expect(url).toMatch(/^\/api\/review\/job-1\//)
     expect(url).not.toContain(PROD)
   })
+
+  it('honours a local ?baseApiUrl= override (another lane\'s stack)', async () => {
+    const url = await capturePostedUrl('127.0.0.1', client, '?baseApiUrl=http://127.0.0.1:8110')
+    expect(url.startsWith('http://127.0.0.1:8110/api/review/job-1/')).toBe(true)
+  })
+
+  it.each(['https://example.com', 'https://api.nomadkaraoke.com', 'javascript:alert(1)', 'not a url'])(
+    'ignores a non-local ?baseApiUrl=%s (the bearer token must not leave the machine)',
+    async (override) => {
+      const url = await capturePostedUrl('10.0.2.2', client, `?baseApiUrl=${encodeURIComponent(override)}`)
+      expect(url).toMatch(/^\/api\/review\/job-1\//)
+    },
+  )
 
   it('uses the production API on the production host', async () => {
     const url = await capturePostedUrl('gen.nomadkaraoke.com', client)
