@@ -467,6 +467,12 @@ class GCEEncodingBackend(EncodingBackend):
 
             # Screens the theme leaves out: the encoder must skip them rather than
             # rebuild them from whatever matching PNG it finds in the job folder.
+            # On the AWS box the video worker sits next to the encoder: ask it
+            # to keep local copies so we take them instead of downloading back
+            # from GCS (local_encoded_outputs). Unset everywhere else.
+            if os.environ.get("LOCAL_ENCODED_OUTPUTS_DIR"):
+                encoding_config["stash_local_outputs"] = True
+
             for flag in ("include_title_screen", "include_end_screen"):
                 if input_config.options.get(flag) is False:
                     encoding_config[flag] = False

@@ -168,7 +168,9 @@ encoding_worker_iam_bindings = worker_sas.grant_encoding_worker_permissions(
 # Federation (no keys). See modules/aws_encoding_wif.py.
 from modules import aws_encoding_wif  # noqa: E402
 
-aws_encoding_wif_resources = aws_encoding_wif.create_aws_encoding_wif(encoding_worker_sa)
+aws_encoding_wif_resources = aws_encoding_wif.create_aws_encoding_wif(
+    encoding_worker_sa, backend_service_account
+)
 
 gdrive_validator_sa = worker_sas.create_gdrive_validator_service_account()
 gdrive_validator_iam_bindings = worker_sas.grant_gdrive_validator_permissions(

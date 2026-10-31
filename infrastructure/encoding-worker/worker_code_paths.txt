@@ -33,3 +33,4 @@ backend/config.py
 infrastructure/encoding-worker/
 infrastructure/packer/
 poetry.lock
+backend/services/local_encoded_outputs.py

@@ -691,8 +691,14 @@ class VideoWorkerOrchestrator:
             local_path = os.path.join(self.config.output_dir, filename)
 
             try:
-                self.job_log.info(f"Downloading {filename} from GCS")
-                self.storage.download_file(gcs_path, local_path)
+                # On the AWS encoding box the encoder left a local copy: take it
+                # instead of downloading back out of GCS (see local_encoded_outputs).
+                from backend.services import local_encoded_outputs
+                if local_encoded_outputs.take(gcs_path, local_path):
+                    self.job_log.info(f"Took {filename} from the co-located encoder (no GCS download)")
+                else:
+                    self.job_log.info(f"Downloading {filename} from GCS")
+                    self.storage.download_file(gcs_path, local_path)
 
                 # Update the result to point to local file
                 setattr(self.result, result_attr, local_path)

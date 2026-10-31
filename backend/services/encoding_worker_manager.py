@@ -115,6 +115,9 @@ class EncodingWorkerConfig:
     # {machine_family: rank} replacing SPEED_RANK at runtime, e.g. {"c7a": 5}
     # makes the AWS worker preferred. Absent/empty ⇒ the built-in ranking.
     speed_rank_overrides: dict = field(default_factory=dict)
+    # True ⇒ when the AWS worker ranks first, the video worker (distribution)
+    # also runs on it instead of the Cloud Run job (worker_service). Default off.
+    aws_video_worker: bool = False
 
     @property
     def primary_url(self) -> str:
@@ -349,6 +352,7 @@ class EncodingWorkerManager:
             active_override_set_at=data.get("active_override_set_at"),
             capacity_state=data.get("capacity_state") or {},
             speed_rank_overrides=data.get("speed_rank_overrides") or {},
+            aws_video_worker=bool(data.get("aws_video_worker", False)),
         )
 
     def update_activity(self) -> None:

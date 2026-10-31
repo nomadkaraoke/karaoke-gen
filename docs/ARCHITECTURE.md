@@ -488,6 +488,7 @@ on-demand fallback if Spot capacity is gone.
   - It is a last resort by default (`SPEED_RANK["c7a"] = 90`).
   - Firestore `config/encoding-worker.speed_rank_overrides = {"c7a": 5}` makes it preferred with no deploy.
   - Both warmups (`ensure_preferred_running`) follow the same ranking, so they warm the worker requests are routed to.
+- **Distribution on AWS (Phase 2, off by default):** with `config/encoding-worker.aws_video_worker = true` and the AWS worker ranked first, `trigger_video_worker` runs the video worker on the box (`POST /run-worker`, env mirrored from the live `video-encoding-job`, identity `karaoke-backend@` via WIF). Uploads leave from AWS, and finals are handed over locally (`local_encoded_outputs`) instead of downloaded back from GCS. Any failure falls back to the Cloud Run job.
 - **Auth and lifecycle:**
   - GCP access is Workload Identity Federation as `encoding-worker@`: no keys.
   - It stops itself when idle (`infrastructure/encoding-worker/aws/idle-watchdog.py`).

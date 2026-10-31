@@ -645,8 +645,69 @@ class WorkerService:
         await asyncio.to_thread(self._bump_worker_generation, job_id)  # Firestore write
         self._start_encoding_worker_warmup(job_id)
         if self._use_cloud_tasks and self.settings.use_cloud_run_jobs_for_video:
+            if await self._trigger_video_worker_on_aws(job_id):
+                return True
             return await self._trigger_cloud_run_job(job_id)
         return await self.trigger_worker("video", job_id)
+
+    async def _trigger_video_worker_on_aws(self, job_id: str) -> bool:
+        """Run the video worker on the AWS encoding box instead of Cloud Run, if enabled.
+
+        Only when Firestore ``config/encoding-worker.aws_video_worker`` is true AND
+        the AWS worker ranks first (it's the preferred encoder, via
+        ``speed_rank_overrides``). There the distribution uploads (Dropbox/YouTube/
+        Drive) leave from AWS, and finals are handed over locally instead of
+        downloaded back out of GCS. Returns False on any doubt or failure so the
+        caller falls back to the Cloud Run job — this path must never lose a job.
+        """
+        try:
+            from backend.services.encoding_service import get_encoding_service
+
+            manager = self._build_encoding_worker_manager()
+            config = await asyncio.to_thread(manager.get_config)
+            if not getattr(config, "aws_video_worker", False):
+                return False
+            candidates = await asyncio.to_thread(manager.ranked_candidates, config)
+            if not candidates or candidates[0].provider != "aws":
+                return False
+            aws = candidates[0]
+            result = await asyncio.to_thread(manager.ensure_any_running, candidates)
+            if result.get("vm_name") != aws.vm_name:
+                logger.warning(
+                    f"[job:{job_id}] AWS video worker: {aws.vm_name} unavailable "
+                    f"(started {result.get('vm_name')}); using Cloud Run"
+                )
+                return False
+            await manager.wait_for_worker_ready(aws.vm_name, f"{aws.url}/health", zone=aws.zone)
+
+            service = get_encoding_service()
+            service._load_credentials()
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.post(
+                    f"{aws.url}/run-worker",
+                    json={"job_id": job_id, "module": "video_worker"},
+                    headers={"X-API-Key": service._api_key},
+                )
+            if resp.status_code == 200 and resp.json().get("status") in ("accepted", "in_progress"):
+                logger.info(f"[job:{job_id}] Video worker started on AWS ({aws.vm_name})")
+                return True
+            logger.warning(
+                f"[job:{job_id}] AWS video worker refused ({resp.status_code}: {resp.text[:300]}); using Cloud Run"
+            )
+            return False
+        except Exception as e:  # noqa: BLE001 — fall back to Cloud Run, never drop the job
+            logger.warning(f"[job:{job_id}] AWS video worker dispatch failed ({e}); using Cloud Run")
+            return False
+
+    def _build_encoding_worker_manager(self):
+        from backend.services.encoding_worker_manager import EncodingWorkerManager
+        from google.cloud import compute_v1, firestore
+
+        return EncodingWorkerManager(
+            db=firestore.Client(project=self.settings.google_cloud_project),
+            compute_client=compute_v1.InstancesClient(),
+            project_id=self.settings.google_cloud_project,
+        )
     
     async def _trigger_cloud_run_job(self, job_id: str) -> bool:
         """

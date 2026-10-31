@@ -1407,6 +1407,8 @@ jobs:
                     "${BUCKET}/encoding-worker/startup-aws.sh"
           gsutil cp infrastructure/encoding-worker/aws/idle-watchdog.py \
                     "${BUCKET}/encoding-worker/idle-watchdog.py"
+          gsutil cp infrastructure/encoding-worker/aws/video-worker-env.py \
+                    "${BUCKET}/encoding-worker/video-worker-env.py"
 
           # 4. Write version manifest for verification
           echo "Writing version manifest..."

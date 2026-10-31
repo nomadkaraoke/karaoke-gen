@@ -35,6 +35,8 @@ AWS_ACCESS_KEY_ID=$NOMAD_AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY=$NOMAD_AWS_SECR
 2. **Register the worker in the pool:** append `pulumi stack output fallback_vms_entry` to the JSON list in secret `encoding-worker-fallback-vms`. The backend picks up `:latest` on new instances, and the next deploy picks it up everywhere.
 3. **Rank:** by default the AWS worker is a **last resort** (`SPEED_RANK["c7a"] = 90`). To prefer it, set Firestore `config/encoding-worker.speed_rank_overrides = {"c7a": 5}`. Delete the field to roll back; no deploy is needed either way.
 
+4. **Distribution on AWS (Phase 2):** once the AWS worker is preferred (step 3), set Firestore `config/encoding-worker.aws_video_worker = true`. The video worker (Dropbox/YouTube/Drive uploads) then runs on the box via `/run-worker`, with the Cloud Run job as an automatic fallback. Set it to `false` to roll back. Run logs are in `/var/log/encoding-worker-runs/`.
+
 ## Operating it
 
 - **Shell:** `aws ssm start-session --target <instance_id> --region us-east-2`.
