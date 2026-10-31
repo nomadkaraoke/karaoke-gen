@@ -42,6 +42,7 @@ from modules import cloud_tasks, cloud_run, monitoring, runner_manager
 from modules import divebar_mirror, kn_data_sync, divebar_lookup, backup
 from modules import audio_separator_service
 from modules import edge_security
+from modules import play_rtdn
 from modules import gpu_artifact_registry
 from modules import encoding_worker_manager
 from modules import error_monitor as error_monitor_module
@@ -646,6 +647,11 @@ gcp.storage.BucketIAMMember(
 # Daily sync of KN catalog and community data to BigQuery/GCS
 
 kn_data_sync_resources = kn_data_sync.create_kn_data_sync_resources(all_secrets)
+
+# ==================== Google Play RTDN ====================
+# Lets Google Play publish purchase notifications to the RevenueCat-owned topic
+
+play_rtdn_resources = play_rtdn.create_play_rtdn_resources()
 
 # ==================== Divebar Lookup API (Phase 3) ====================
 # Search/lookup API for KJ Controller + KN cross-reference index
