@@ -669,6 +669,10 @@ class WorkerService:
                 return False
             candidates = await asyncio.to_thread(manager.ranked_candidates, config)
             if not candidates or candidates[0].provider != "aws":
+                logger.info(
+                    f"[job:{job_id}] AWS video worker enabled but not the preferred encoder "
+                    f"(top: {candidates[0].vm_name if candidates else 'none'}); using Cloud Run"
+                )
                 return False
             aws = candidates[0]
             result = await asyncio.to_thread(manager.ensure_any_running, candidates)

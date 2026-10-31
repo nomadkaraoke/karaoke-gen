@@ -239,9 +239,17 @@ class EncodingWorkerManager:
         raw = self._fallback_vms_raw
         if raw is None:
             try:
-                from backend.config import get_settings
+                from backend.config import get_settings, is_production
 
-                raw = get_settings().encoding_worker_fallback_vms
+                settings = get_settings()
+                raw = settings.encoding_worker_fallback_vms
+                if not raw and is_production():
+                    # Only the API service and video-encoding-job get the env var;
+                    # the audio/lyrics/download jobs also trigger the video worker
+                    # and warm the encoder, so read the secret directly (cached
+                    # per process by get_secret). Without this they never see the
+                    # AWS worker and silently keep the old path.
+                    raw = settings.get_secret("encoding-worker-fallback-vms")
             except Exception as e:  # noqa: BLE001
                 logger.warning("Could not read ENCODING_WORKER_FALLBACK_VMS: %s", e)
                 raw = None

@@ -144,3 +144,45 @@ def test_aws_control_plane_fault_fails_over_to_gce():
     result = m.ensure_any_running(m.ranked_candidates())
 
     assert result["vm_name"] == "encoding-worker-a"
+
+
+def _settings(env_value, secret_value):
+    s = MagicMock()
+    s.encoding_worker_fallback_vms = env_value
+    s.get_secret = MagicMock(return_value=secret_value)
+    return s
+
+
+def test_fallback_entries_read_secret_in_prod_when_env_missing(monkeypatch):
+    """Jobs without the env var (audio/lyrics/download) still see the AWS worker:
+    they trigger the video worker after stems, so they must rank identically."""
+    from unittest.mock import patch
+    db, _ = _db()
+    m = EncodingWorkerManager(db=db, compute_client=MagicMock(), aws_compute=MagicMock())
+    settings = _settings(None, json.dumps([AWS_ENTRY]))
+    with patch("backend.config.get_settings", return_value=settings), \
+         patch("backend.config.is_production", return_value=True):
+        assert [e["vm"] for e in m.fallback_entries()] == ["aws-encoding-worker-1"]
+    settings.get_secret.assert_called_once_with("encoding-worker-fallback-vms")
+
+
+def test_fallback_entries_never_fetch_secret_outside_prod():
+    from unittest.mock import patch
+    db, _ = _db()
+    m = EncodingWorkerManager(db=db, compute_client=MagicMock(), aws_compute=MagicMock())
+    settings = _settings(None, json.dumps([AWS_ENTRY]))
+    with patch("backend.config.get_settings", return_value=settings), \
+         patch("backend.config.is_production", return_value=False):
+        assert m.fallback_entries() == []
+    settings.get_secret.assert_not_called()
+
+
+def test_fallback_entries_prefer_env_over_secret():
+    from unittest.mock import patch
+    db, _ = _db()
+    m = EncodingWorkerManager(db=db, compute_client=MagicMock(), aws_compute=MagicMock())
+    settings = _settings(json.dumps([C2D_ENTRY]), json.dumps([AWS_ENTRY]))
+    with patch("backend.config.get_settings", return_value=settings), \
+         patch("backend.config.is_production", return_value=True):
+        assert [e["vm"] for e in m.fallback_entries()] == ["encoding-worker-fallback-c2df"]
+    settings.get_secret.assert_not_called()
