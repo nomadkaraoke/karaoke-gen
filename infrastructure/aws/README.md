@@ -1,12 +1,12 @@
 # nomad-aws: Nomad Karaoke's AWS account (790139457751)
 
-This stack holds the **AWS encoding worker**, an EC2 Spot instance running the same `gce_encoding` HTTP service as the GCE encoding VMs. It is paid for by AWS Activate credits ($5k, expiring 2028-10-31). The plan and benchmark are in `docs/archive/2026-10-29-aws-encoding-worker-plan.md`.
+This stack holds the **AWS encoding worker**, an on-demand EC2 instance running the same `gce_encoding` HTTP service as the GCE encoding VMs. It is paid for by AWS Activate credits ($5k, expiring 2028-10-31). The plan and benchmark are in `docs/archive/2026-10-29-aws-encoding-worker-plan.md`.
 
 ## What's here
 
 | Resource | Purpose |
 |---|---|
-| `aws-encoding-worker-1` | c7a.8xlarge **persistent Spot**, us-east-2b. Stops on interruption and on OS shutdown; the EBS root survives. The Elastic IP serves `:8080`. |
+| `aws-encoding-worker-1` | c7a.4xlarge **on-demand**, us-east-2b. Stops on OS shutdown (idle watchdog); the EBS root survives. Spot capacity was too thin (see `__main__.py`). The Elastic IP serves `:8080`. |
 | `nomad-encoding-worker` role | The box's identity. GCP federates it to `encoding-worker@nomadkaraoke` (WIF pool `aws-encoding`, in the GCP stack's `modules/aws_encoding_wif.py`). It also has SSM for a shell. |
 | `nomad-encoding-controller` user | Backend rights: start/stop instances tagged `Project=nomad-encoding`, plus describe. |
 
@@ -40,4 +40,4 @@ AWS_ACCESS_KEY_ID=$NOMAD_AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY=$NOMAD_AWS_SECR
 - **Shell:** `aws ssm start-session --target <instance_id> --region us-east-2`.
 - **Logs:** `journalctl -u encoding-worker`, `/var/log/encoding-worker-startup.log`, `journalctl -u encoding-worker-idle`. They are **not** in Cloud Logging.
 - **Health:** `curl http://<eip>:8080/health`.
-- **Spot interruption:** EC2 *stops* the box. An in-flight encode/render is detected as lost (the box is no longer RUNNING) and resubmitted. If c7a capacity is short, the start fails with `InsufficientInstanceCapacity`; that is recorded in `capacity_state`, demoted for 15 min, and GCE takes over.
+- **Capacity:** if c7a capacity is short, the start fails with `InsufficientInstanceCapacity`; that is recorded in `capacity_state`, demoted for 15 min, and GCE takes over.
