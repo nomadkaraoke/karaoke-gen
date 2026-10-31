@@ -110,4 +110,4 @@ Needs:
 - **Portrait parity:** same duration, SSIM 0.993, and identical lyrics. The only difference is sub-pixel anti-aliasing of the header/footer text (title, artist, brand), from the newer `fonts-noto` on Ubuntu 24.04. Visually indistinguishable, so it doesn't block stage C.
 - A status poll timed out once while the worker downloaded inputs. `process_job` downloads synchronously on the event loop; that is pre-existing and the same on GCE, and the backend's poller tolerates it.
 
-**Remaining for stage A (needs `/gcp-admin`):** append `pulumi stack output fallback_vms_entry` to the `encoding-worker-fallback-vms` secret. Stage B then begins by setting `speed_rank_overrides`.
+**Remaining for stage A (needs `/gcp-admin`):** append `pulumi stack output fallback_vms_entry` to the `encoding-worker-fallback-vms` secret, then **redeploy the backend**. Running Cloud Run instances keep the value they loaded at startup. Stage B begins after that deploy, by setting `speed_rank_overrides`.
