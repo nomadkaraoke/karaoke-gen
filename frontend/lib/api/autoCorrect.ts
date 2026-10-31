@@ -9,10 +9,7 @@
  * flows through the existing corrections/complete paths.
  */
 import type { LyricsSegment, ReferenceSource } from '@/lib/lyrics-review/types'
-import { apiFetch } from '@/lib/api'
-
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE ?? 'https://api.nomadkaraoke.com'
+import { API_BASE_URL as API_BASE, apiFetch } from '@/lib/api'
 
 export type AiSuggestionOp = 'replace' | 'delete' | 'insert_after'
 

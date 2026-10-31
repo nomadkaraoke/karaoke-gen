@@ -7,10 +7,7 @@
  * preview. Persistence still flows through the existing replace-segments
  * Save path.
  */
-import { apiFetch } from '@/lib/api'
-
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE ?? 'https://api.nomadkaraoke.com'
+import { API_BASE_URL as API_BASE, apiFetch } from '@/lib/api'
 
 export type StrictnessLevel = 'verbatim' | 'loose' | 'balanced' | 'tight' | 'strict'
 export type StopReason =

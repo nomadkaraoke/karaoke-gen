@@ -79,6 +79,50 @@ export function adjustPreviousWordEnd(previousWord: Word, nextStart: number, was
   }
 }
 
+/**
+ * Close out a Tap To Sync pass that stopped before the last word (auto-stop after the line, or the
+ * user pressing Stop mid-line). The untapped words after the last tapped one still carry their OLD
+ * timings, which can now start BEFORE the last tapped word (gen's fake fixture: taps at 16.0, 17.2,
+ * 18.4, 19.6 leave "ever" at 19.6 but "transcribed" at a stale 18.74) and would render out of order.
+ *
+ * - Every untapped word after the last tapped one whose start is before the last tapped word's
+ *   start is cleared (null start/end), so the untimed-lyrics guard blocks finishing and points the
+ *   user at it, instead of saving words that highlight out of order.
+ * - The last tapped word's end is then capped before the next still-timed word in the line.
+ *
+ * Mirrors nomad-mobile's review-core `commitTapSync`. Returns a new words array, or null when
+ * nothing changed. Pure; `synced` is the set of word indices tapped this pass.
+ */
+export function commitPartialSyncPass(words: Word[], synced: Set<number>): Word[] | null {
+  if (synced.size === 0) return null
+  const last = Math.max(...synced)
+  const lastWord = words[last]
+  if (!lastWord || lastWord.start_time === null || lastWord.end_time === null) return null
+  const tappedStart = lastWord.start_time
+
+  let changed = false
+  const next = words.map((word, j) => {
+    if (j > last && word.start_time !== null && word.start_time < tappedStart) {
+      changed = true
+      return { ...word, start_time: null, end_time: null }
+    }
+    return word
+  })
+
+  const nextTimed = next.slice(last + 1).find((word) => word.start_time !== null)
+  if (nextTimed && nextTimed.start_time !== null) {
+    const cappedEnd = Math.max(
+      Math.min(lastWord.end_time, nextTimed.start_time - OVERLAP_BUFFER),
+      tappedStart
+    )
+    if (cappedEnd !== lastWord.end_time) {
+      changed = true
+      next[last] = { ...lastWord, end_time: cappedEnd }
+    }
+  }
+  return changed ? next : null
+}
+
 export default function useManualSync({
   editedSegment,
   currentTime,
@@ -134,7 +178,21 @@ export default function useManualSync({
     }
   }, [updateSegment, syncWordIndex]) // Only update when syncWordIndex changes
 
+  // Latest updateSegment, so the stable cleanupManualSync can commit the pass with it.
+  const updateSegmentRef = useRef(updateSegment)
+  useEffect(() => {
+    updateSegmentRef.current = updateSegment
+  }, [updateSegment])
+
   const cleanupManualSync = useCallback(() => {
+    // A pass stopped mid-line (auto-stop or Stop): clear stale untapped words that now start before
+    // the last tapped one, and cap that word before the next timed word (see commitPartialSyncPass).
+    const committed = commitPartialSyncPass(wordsRef.current, syncedIndicesRef.current)
+    if (committed) {
+      wordsRef.current = committed
+      updateSegmentRef.current(committed)
+    }
+
     setIsManualSyncing(false)
     setIsPaused(false)
     setSyncWordIndex(-1)
