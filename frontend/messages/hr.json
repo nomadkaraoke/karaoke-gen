@@ -1259,7 +1259,10 @@
         "stemsGaveUp": "Instrumental još nije spreman, pa ćeš ga odabrati na sljedećem zaslonu.",
         "stemsWaitingDesc": "Ovo obično traje minutu ili dvije. Kada završi, moći ćeš odabrati instrumental i preslušati prateće vokale upravo ovdje. Ne moraš zatvarati ovaj prozor.",
         "stemsWaitingTitle": "Glazba se još odvaja od vokala…",
-        "stemsWaitingProceed": "U žurbi si? Umjesto toga možeš odmah nastaviti na pregled cjelovitog instrumentala."
+        "stemsWaitingProceed": "U žurbi si? Umjesto toga možeš odmah nastaviti na pregled cjelovitog instrumentala.",
+        "syncReferenceHelp": "Označi kvačicom samo ako si siguran da je sinkronizacija riječi točna od početka do kraja. Neoznačene pjesme smatraju se nepotvrđenima.",
+        "syncReferenceLabel": "Admin: savršeno sinkronizirano (dodaj u skup referenci za sinkronizaciju)",
+        "syncReferenceNotesPlaceholder": "Bilješke (neobavezno)"
       },
       "searchLyrics": {
         "artist": "Izvođač",

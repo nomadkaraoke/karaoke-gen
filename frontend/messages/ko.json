@@ -1259,7 +1259,10 @@
         "stemsGaveUp": "반주 트랙이 아직 준비되지 않아 다음 화면에서 선택하시게 됩니다.",
         "stemsWaitingDesc": "보통 1~2분 정도 걸립니다. 완료되면 바로 여기에서 반주 트랙을 선택하고 코러스(백보컬)를 들어보실 수 있어요. 이 창을 닫지 않고 기다려 주세요.",
         "stemsWaitingTitle": "음악과 보컬을 분리하고 있어요…",
-        "stemsWaitingProceed": "급하신가요? 대신 지금 바로 전체 반주 검토 단계로 진행하실 수 있습니다."
+        "stemsWaitingProceed": "급하신가요? 대신 지금 바로 전체 반주 검토 단계로 진행하실 수 있습니다.",
+        "syncReferenceHelp": "곡 전체의 단어 타이밍이 정확하다고 확신하는 경우에만 체크해 주세요. 체크하지 않은 트랙은 미확인 상태로 처리됩니다.",
+        "syncReferenceLabel": "관리자: 싱크 완벽함(타이밍 기준 세트에 추가)",
+        "syncReferenceNotesPlaceholder": "메모 (선택 사항)"
       },
       "searchLyrics": {
         "artist": "아티스트",

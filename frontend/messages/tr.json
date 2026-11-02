@@ -1259,7 +1259,10 @@
         "stemsGaveUp": "Enstrümantal henüz hazır değil, bu yüzden bir sonraki ekranda seçeceksin.",
         "stemsWaitingDesc": "Bu işlem genellikle bir iki dakika sürer. Tamamlandığında enstrümantalini seçebilecek ve geri vokalleri doğrudan buradan dinleyebileceksin. Bu pencereyi kapatmana gerek yok.",
         "stemsWaitingTitle": "Müzik hâlâ vokallerden ayrıştırılıyor…",
-        "stemsWaitingProceed": "Acelen mi var? Beklemek yerine şimdi tam enstrümantal incelemesine devam edebilirsin."
+        "stemsWaitingProceed": "Acelen mi var? Beklemek yerine şimdi tam enstrümantal incelemesine devam edebilirsin.",
+        "syncReferenceHelp": "Yalnızca kelime zamanlamasının baştan sona doğru olduğundan eminsen işaretle. İşaretlenmemiş parçalar doğrulanmamış kabul edilir.",
+        "syncReferenceLabel": "Yönetici: kusursuz senkronize edildi (zamanlama referans kümesine ekle)",
+        "syncReferenceNotesPlaceholder": "Notlar (isteğe bağlı)"
       },
       "searchLyrics": {
         "artist": "Sanatçı",

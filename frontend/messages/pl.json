@@ -1259,7 +1259,10 @@
         "stemsGaveUp": "Wersja instrumentalna nie jest jeszcze gotowa, więc wybierzesz ją na następnym ekranie.",
         "stemsWaitingDesc": "Zazwyczaj zajmuje to minutę lub dwie. Gdy wszystko będzie gotowe, wybierzesz wersję instrumentalną i odsłuchasz chórki bezpośrednio tutaj. Nie musisz zamykać tego okna.",
         "stemsWaitingTitle": "Nadal trwa oddzielanie muzyki od wokalu…",
-        "stemsWaitingProceed": "Śpieszysz się? Zamiast tego możesz przejść teraz do pełnego przeglądu wersji instrumentalnej."
+        "stemsWaitingProceed": "Śpieszysz się? Zamiast tego możesz przejść teraz do pełnego przeglądu wersji instrumentalnej.",
+        "syncReferenceHelp": "Zaznacz tylko wtedy, gdy masz pewność, że synchronizacja słów jest prawidłowa w całym utworze. Niezaznaczone utwory są traktowane jako niezweryfikowane.",
+        "syncReferenceLabel": "Admin: idealnie zsynchronizowane (dodaj do referencyjnego zbioru synchronizacji)",
+        "syncReferenceNotesPlaceholder": "Notatki (opcjonalnie)"
       },
       "searchLyrics": {
         "artist": "Wykonawca",

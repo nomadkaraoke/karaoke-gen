@@ -9,6 +9,7 @@ import { AlertTriangle, ArrowLeft, ArrowRight, Loader2 } from 'lucide-react'
 import PreviewVideoSection, { PreviewVideoHandle } from '../PreviewVideoSection'
 import BackingVocalsWaveform from '../BackingVocalsWaveform'
 import type { LateInstrumentalStatus } from '@/lib/lyrics-review/hooks/useLateInstrumentalStems'
+import { useAuth } from '@/lib/auth'
 
 interface WaveformDataResult {
   amplitudes: number[]
@@ -29,6 +30,7 @@ interface ApiClient {
   getPreviewVideoUrl: (hash: string) => string
   getWaveformData?: (numPoints?: number) => Promise<WaveformDataResult>
   refreshInstrumentalUrls?: () => Promise<InstrumentalOption[]>
+  setSyncReference?: (verified: boolean, notes?: string) => Promise<void>
 }
 
 interface ReviewChangesModalProps {
@@ -152,8 +154,21 @@ export default function ReviewChangesModal({
     )
   }
 
+  // Admin-only "perfectly synced" mark: verified jobs join the word-timing reference
+  // set used to train and evaluate the aligner. Unticked = unverified (nothing sent).
+  const isAdmin = useAuth((s) => s.user?.role === 'admin')
+  const [syncVerified, setSyncVerified] = useState(false)
+  const [syncNotes, setSyncNotes] = useState('')
+  const canMarkSync = isAdmin && !!apiClient?.setSyncReference
+
   const handleSubmit = () => {
     if (isSubmitting) return
+    if (canMarkSync && syncVerified) {
+      // Best-effort: never block or fail the review on the reference mark.
+      apiClient!.setSyncReference!(true, syncNotes.trim() || undefined).catch((err) =>
+        console.error('Failed to save sync reference mark', err)
+      )
+    }
     onSubmit()
   }
 
@@ -300,6 +315,34 @@ export default function ReviewChangesModal({
                   />
                 )}
               </>
+            )}
+          </div>
+        )}
+
+        {canMarkSync && (
+          <div className="rounded-md border border-dashed p-3 text-sm space-y-2" data-testid="sync-reference">
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={syncVerified}
+                onChange={(e) => setSyncVerified(e.target.checked)}
+                data-testid="sync-reference-checkbox"
+              />
+              <span>
+                <span className="font-medium">{t('syncReferenceLabel')}</span>
+                <span className="block text-muted-foreground text-xs">{t('syncReferenceHelp')}</span>
+              </span>
+            </label>
+            {syncVerified && (
+              <input
+                type="text"
+                value={syncNotes}
+                onChange={(e) => setSyncNotes(e.target.value)}
+                placeholder={t('syncReferenceNotesPlaceholder')}
+                className="w-full rounded border bg-background px-2 py-1 text-xs"
+                data-testid="sync-reference-notes"
+              />
             )}
           </div>
         )}

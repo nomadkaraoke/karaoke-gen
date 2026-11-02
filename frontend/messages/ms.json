@@ -1259,7 +1259,10 @@
         "stemsGaveUp": "Muzik instrumental belum siap lagi, jadi anda boleh memilihnya di skrin seterusnya.",
         "stemsWaitingDesc": "Ini biasanya mengambil masa satu atau dua minit. Setelah selesai, anda boleh memilih muzik instrumental dan mendengar vokal latar di sini. Anda tidak perlu menutup tetingkap ini.",
         "stemsWaitingTitle": "Masih mengasingkan muzik daripada vokal…",
-        "stemsWaitingProceed": "Mahu cepat? Anda boleh teruskan ke semakan instrumental penuh sekarang."
+        "stemsWaitingProceed": "Mahu cepat? Anda boleh teruskan ke semakan instrumental penuh sekarang.",
+        "syncReferenceHelp": "Tandakan hanya jika anda yakin pemasaan perkataan adalah tepat sepenuhnya. Trek yang tidak ditandakan akan dianggap sebagai belum disahkan.",
+        "syncReferenceLabel": "Admin: disegerakkan dengan sempurna (tambah pada set rujukan pemasaan)",
+        "syncReferenceNotesPlaceholder": "Nota (pilihan)"
       },
       "searchLyrics": {
         "artist": "Artis",

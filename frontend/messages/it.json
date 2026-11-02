@@ -1259,7 +1259,10 @@
         "stemsGaveUp": "La base strumentale non è ancora pronta, quindi la sceglierai nella schermata successiva.",
         "stemsWaitingDesc": "Di solito ci vogliono uno o due minuti. Al termine, potrai scegliere la base strumentale e ascoltare i cori proprio qui. Non devi chiudere questa finestra.",
         "stemsWaitingTitle": "Separazione della musica dalla voce ancora in corso…",
-        "stemsWaitingProceed": "Hai fretta? Puoi invece passare subito alla revisione completa della base strumentale."
+        "stemsWaitingProceed": "Hai fretta? Puoi invece passare subito alla revisione completa della base strumentale.",
+        "syncReferenceHelp": "Spunta solo se hai la certezza che il timing delle parole sia corretto dall'inizio alla fine. Le tracce non spuntate vengono considerate non verificate.",
+        "syncReferenceLabel": "Admin: perfettamente sincronizzato (aggiungi al set di riferimento per il timing)",
+        "syncReferenceNotesPlaceholder": "Note (facoltativo)"
       },
       "searchLyrics": {
         "artist": "Artista",

@@ -1259,7 +1259,10 @@
         "stemsGaveUp": "La pista instrumental encara no està a punt, així que la triaràs a la pantalla següent.",
         "stemsWaitingDesc": "Això sol trigar un parell de minuts. Quan hagi acabat, podràs triar la pista instrumental i escoltar les veus de fons aquí mateix. No cal que tanquis aquesta finestra.",
         "stemsWaitingTitle": "Encara s'està separant la música de la veu…",
-        "stemsWaitingProceed": "Tens pressa? Pots passar directament a la revisió instrumental completa."
+        "stemsWaitingProceed": "Tens pressa? Pots passar directament a la revisió instrumental completa.",
+        "syncReferenceHelp": "Marca-ho només si estàs segur que la sincronització de les paraules és correcta de principi a fi. Les pistes desmarcades es consideren no verificades.",
+        "syncReferenceLabel": "Administració: perfectament sincronitzat (afegeix al conjunt de referència de sincronització)",
+        "syncReferenceNotesPlaceholder": "Notes (opcional)"
       },
       "searchLyrics": {
         "artist": "Artista",

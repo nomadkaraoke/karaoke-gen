@@ -1259,7 +1259,10 @@
         "stemsGaveUp": "Taustaraita ei ole vielä valmis, joten voit valita sen seuraavassa näkymässä.",
         "stemsWaitingDesc": "Tämä kestää yleensä minuutin tai kaksi. Kun se on valmis, voit valita taustaraidan ja kuunnella taustalauluja suoraan tässä. Tätä ikkunaa ei tarvitse sulkea.",
         "stemsWaitingTitle": "Musiikkia ja laulua erotellaan vielä toisistaan…",
-        "stemsWaitingProceed": "Onko kiire? Voit jatkaa koko instrumentaalin tarkistukseen heti sen sijaan."
+        "stemsWaitingProceed": "Onko kiire? Voit jatkaa koko instrumentaalin tarkistukseen heti sen sijaan.",
+        "syncReferenceHelp": "Valitse tämä vain, jos olet varma, että sanojen ajoitus on kohdallaan koko kappaleen ajan. Valitsemattomia raitoja pidetään vahvistamattomina.",
+        "syncReferenceLabel": "Ylläpito: täydellisesti synkronoitu (lisää ajoituksen viiteaineistoon)",
+        "syncReferenceNotesPlaceholder": "Muistiinpanot (valinnainen)"
       },
       "searchLyrics": {
         "artist": "Esittäjä",

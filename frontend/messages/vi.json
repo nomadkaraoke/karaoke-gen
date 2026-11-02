@@ -1259,7 +1259,10 @@
         "stemsGaveUp": "Nhạc nền vẫn chưa sẵn sàng, bạn có thể chọn ở màn hình tiếp theo nhé.",
         "stemsWaitingDesc": "Quá trình này thường mất khoảng một hoặc hai phút. Khi hoàn tất, bạn sẽ có thể chọn nhạc nền và nghe phần bè ngay tại đây. Bạn không cần phải đóng cửa sổ này.",
         "stemsWaitingTitle": "Vẫn đang tách nhạc và giọng hát…",
-        "stemsWaitingProceed": "Bạn đang vội? Bạn có thể chuyển sang xem lại toàn bộ phần nhạc cụ ngay bây giờ."
+        "stemsWaitingProceed": "Bạn đang vội? Bạn có thể chuyển sang xem lại toàn bộ phần nhạc cụ ngay bây giờ.",
+        "syncReferenceHelp": "Chỉ tích chọn nếu bạn chắc chắn thời gian khớp từng từ đã chuẩn xác từ đầu đến cuối. Các bài chưa tích chọn sẽ được coi là chưa xác minh.",
+        "syncReferenceLabel": "Quản trị viên: khớp hoàn hảo (thêm vào bộ tham chiếu timing)",
+        "syncReferenceNotesPlaceholder": "Ghi chú (không bắt buộc)"
       },
       "searchLyrics": {
         "artist": "Nghệ sĩ",

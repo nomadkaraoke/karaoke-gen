@@ -1259,7 +1259,10 @@
         "stemsGaveUp": "Musik instrumental belum siap, jadi Anda bisa memilihnya di layar berikutnya.",
         "stemsWaitingDesc": "Proses ini biasanya butuh satu atau dua menit. Setelah selesai, Anda bisa memilih musik instrumental dan mendengarkan vokal latar langsung di sini. Jendela ini tidak perlu ditutup.",
         "stemsWaitingTitle": "Masih memisahkan musik dari vokal…",
-        "stemsWaitingProceed": "Sedang terburu-buru? Anda bisa langsung lanjut ke peninjauan instrumental lengkap sekarang."
+        "stemsWaitingProceed": "Sedang terburu-buru? Anda bisa langsung lanjut ke peninjauan instrumental lengkap sekarang.",
+        "syncReferenceHelp": "Centang hanya jika Anda yakin pengaturan waktu kata sudah tepat dari awal hingga akhir. Trek yang tidak dicentang akan dianggap belum diverifikasi.",
+        "syncReferenceLabel": "Admin: tersinkronisasi sempurna (tambahkan ke kumpulan referensi pengaturan waktu)",
+        "syncReferenceNotesPlaceholder": "Catatan (opsional)"
       },
       "searchLyrics": {
         "artist": "Artis",

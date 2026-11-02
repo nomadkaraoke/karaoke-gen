@@ -4295,6 +4295,8 @@ export interface LyricsReviewApiClient {
   refreshInstrumentalUrls: () => Promise<InstrumentalOption[]>
   getInstrumentalState?: () => Promise<InstrumentalState>
   completeReview: () => Promise<{ status: string; job_status: string; message: string }>
+  /** Admin only: mark the reviewed timing "perfectly synced" (word-timing reference set). */
+  setSyncReference?: (verified: boolean, notes?: string) => Promise<void>
   // Review session methods
   saveReviewSession: (data: CorrectionData, editCount: number, trigger: string, summary: ReviewSessionSummary) => Promise<{ status: string; session_id?: string; reason?: string }>
   listReviewSessions: () => Promise<{ sessions: ReviewSession[] }>
@@ -4515,6 +4517,18 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
      * modal still calls this on an audio load error (e.g. a transient network blip), and
      * it's cheap and harmless. Resolved to absolute token URLs like getCorrectionData.
      */
+    async setSyncReference(verified: boolean, notes?: string): Promise<void> {
+      const response = await apiFetch(`${API_BASE_URL}/api/review/${jobId}/sync-reference`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify({ verified, notes: notes || null }),
+      })
+      await handleResponse<unknown>(response)
+    },
+
     async refreshInstrumentalUrls(): Promise<InstrumentalOption[]> {
       const response = await apiFetch(
         `${API_BASE_URL}/api/review/${jobId}/instrumental-urls`,
