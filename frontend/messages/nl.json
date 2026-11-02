@@ -1259,7 +1259,10 @@
         "stemsGaveUp": "De instrumentale versie is nog niet klaar, dus je kiest deze in het volgende scherm.",
         "stemsWaitingDesc": "Dit duurt meestal een minuut of twee. Zodra het klaar is, kun je hier je instrumentale versie kiezen en naar de achtergrondzang luisteren. Je hoeft dit venster niet te sluiten.",
         "stemsWaitingTitle": "De muziek wordt nog gescheiden van de zang…",
-        "stemsWaitingProceed": "Heb je haast? Je kunt nu ook alvast doorgaan naar de volledige instrumentale controle."
+        "stemsWaitingProceed": "Heb je haast? Je kunt nu ook alvast doorgaan naar de volledige instrumentale controle.",
+        "syncReferenceHelp": "Vink dit alleen aan als je er zeker van bent dat de timing van de woorden overal klopt. Niet-aangevinkte nummers worden behandeld als niet-geverifieerd.",
+        "syncReferenceLabel": "Beheerder: perfect gesynchroniseerd (toevoegen aan de timingsreferentieset)",
+        "syncReferenceNotesPlaceholder": "Notities (optioneel)"
       },
       "searchLyrics": {
         "artist": "Artiest",
@@ -1467,7 +1470,8 @@
     },
     "toasts": {
       "customLyricsSaved": "Aangepaste songtekst toegepast. Synchroniseer elk bewerkt segment handmatig zodat de timing van de woorden perfect aansluit op de nieuwe songtekst.",
-      "untimedWordsBlockSubmit": "{count, plural, one {# woord in de songtekst heeft} other {# woorden in de songtekst hebben}} nog geen timing. Open de synchronizer en tik elke regel mee op de maat voordat je de video genereert."
+      "untimedWordsBlockSubmit": "{count, plural, one {# woord in de songtekst heeft} other {# woorden in de songtekst hebben}} nog geen timing. Open de synchronizer en tik elke regel mee op de maat voordat je de video genereert.",
+      "syncReferenceSaveFailed": "Je beoordeling is opgeslagen, maar de markering \"perfect gesynchroniseerd\" niet. Open de beoordeling opnieuw om dit alsnog te markeren."
     },
     "autoCorrect": {
       "accept": "Accepteer suggestie",

@@ -1259,7 +1259,10 @@
         "stemsGaveUp": "Instrumentalen er ikke klar ennå, så du velger den på neste skjerm.",
         "stemsWaitingDesc": "Dette tar vanligvis et minutt eller to. Når det er ferdig, kan du velge instrumentalspor og lytte til koringen her. Du trenger ikke å lukke dette vinduet.",
         "stemsWaitingTitle": "Skiller fortsatt musikken fra vokalen…",
-        "stemsWaitingProceed": "Har du det travelt? Du kan fortsette til full gjennomgang av instrumentalen nå i stedet."
+        "stemsWaitingProceed": "Har du det travelt? Du kan fortsette til full gjennomgang av instrumentalen nå i stedet.",
+        "syncReferenceHelp": "Kryss bare av hvis du er sikker på at ordtimingen er riktig hele veien gjennom. Spor som ikke er krysset av, behandles som ubekreftet.",
+        "syncReferenceLabel": "Admin: perfekt synkronisert (legg til i referansesettet for timing)",
+        "syncReferenceNotesPlaceholder": "Notater (valgfritt)"
       },
       "searchLyrics": {
         "artist": "Artist",
@@ -1467,7 +1470,8 @@
     },
     "toasts": {
       "customLyricsSaved": "Egendefinert tekst er lagt til. Synkroniser hvert redigerte segment manuelt for å sikre at timingen av ordene stemmer for den tilpassede teksten.",
-      "untimedWordsBlockSubmit": "{count, plural, one {# tekstord har} other {# tekstord har}} ingen timing ennå. Åpne synkronisatoren og trykk på hver linje i takt med musikken før du genererer videoen."
+      "untimedWordsBlockSubmit": "{count, plural, one {# tekstord har} other {# tekstord har}} ingen timing ennå. Åpne synkronisatoren og trykk på hver linje i takt med musikken før du genererer videoen.",
+      "syncReferenceSaveFailed": "Vurderingen din ble lagret, men markeringen for «helt synkronisert» ble ikke det. Åpne vurderingen på nytt for å markere den igjen."
     },
     "autoCorrect": {
       "accept": "Godta forslag",

@@ -1259,7 +1259,10 @@
         "stemsGaveUp": "O instrumental ainda não está pronto, então você vai escolhê-lo na próxima tela.",
         "stemsWaitingDesc": "Isso geralmente leva um ou dois minutos. Quando terminar, você poderá escolher seu instrumental e ouvir os vocais de apoio bem aqui. Não é necessário fechar esta janela.",
         "stemsWaitingTitle": "Ainda separando a música da voz…",
-        "stemsWaitingProceed": "Com pressa? Você pode continuar para a revisão completa do instrumental agora, se preferir."
+        "stemsWaitingProceed": "Com pressa? Você pode continuar para a revisão completa do instrumental agora, se preferir.",
+        "syncReferenceHelp": "Marque apenas se você tiver certeza de que a sincronização das palavras está correta do início ao fim. Faixas desmarcadas são tratadas como não verificadas.",
+        "syncReferenceLabel": "Admin: perfeitamente sincronizada (adicionar ao conjunto de referência de sincronização)",
+        "syncReferenceNotesPlaceholder": "Anotações (opcional)"
       },
       "searchLyrics": {
         "artist": "Artista",
@@ -1467,7 +1470,8 @@
     },
     "toasts": {
       "customLyricsSaved": "Letras personalizadas aplicadas. Sincronize manualmente cada segmento editado para garantir que o tempo das palavras fique adequado para as novas letras.",
-      "untimedWordsBlockSubmit": "{count, plural, one {# palavra da letra ainda não tem} other {# palavras da letra ainda não têm}} sincronização. Abra o sincronizador e toque em cada linha no ritmo antes de gerar o vídeo."
+      "untimedWordsBlockSubmit": "{count, plural, one {# palavra da letra ainda não tem} other {# palavras da letra ainda não têm}} sincronização. Abra o sincronizador e toque em cada linha no ritmo antes de gerar o vídeo.",
+      "syncReferenceSaveFailed": "Sua revisão foi salva, mas a marcação de \"perfeitamente sincronizada\" não. Reabra a revisão para marcá-la novamente."
     },
     "autoCorrect": {
       "accept": "Aceitar sugestão",

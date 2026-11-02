@@ -1259,7 +1259,10 @@
         "stemsGaveUp": "Az instrumentális sáv még nincs kész, így a következő képernyőn választhatod majd ki.",
         "stemsWaitingDesc": "Ez általában egy-két percet vesz igénybe. Amint elkészül, közvetlenül itt kiválaszthatod az instrumentális sávot, és meghallgathatod a háttérvokált. Nem szükséges bezárnod ezt az ablakot.",
         "stemsWaitingTitle": "A zene és az ének szétválasztása még folyamatban van…",
-        "stemsWaitingProceed": "Sietsz? Akár most is továbbléphetsz a teljes instrumentális sáv ellenőrzésére."
+        "stemsWaitingProceed": "Sietsz? Akár most is továbbléphetsz a teljes instrumentális sáv ellenőrzésére.",
+        "syncReferenceHelp": "Csak akkor pipáld be, ha biztos vagy benne, hogy a szavak időzítése végig pontos. A be nem jelölt számok ellenőrizetlennek minősülnek.",
+        "syncReferenceLabel": "Admin: tökéletesen szinkronizálva (hozzáadás az időzítési referenciakészlethez)",
+        "syncReferenceNotesPlaceholder": "Jegyzetek (nem kötelező)"
       },
       "searchLyrics": {
         "artist": "Előadó",
@@ -1467,7 +1470,8 @@
     },
     "toasts": {
       "customLyricsSaved": "Egyedi dalszöveg alkalmazva. Szinkronizáld manuálisan az összes szerkesztett szegmenst, hogy a szavak időzítése megfelelő legyen a testreszabott dalszöveghez.",
-      "untimedWordsBlockSubmit": "{count, plural, one {# szó a dalszövegben} other {# szó a dalszövegben}} még nincs időzítve. Nyisd meg a szinkronizálót, és a videó generálása előtt koppints az egyes sorokra az ütemre."
+      "untimedWordsBlockSubmit": "{count, plural, one {# szó a dalszövegben} other {# szó a dalszövegben}} még nincs időzítve. Nyisd meg a szinkronizálót, és a videó generálása előtt koppints az egyes sorokra az ütemre.",
+      "syncReferenceSaveFailed": "Az átnézésedet elmentettük, de a „tökéletesen szinkronizált” jelölést nem. Nyisd meg újra az átnézést az ismételt megjelöléshez."
     },
     "autoCorrect": {
       "accept": "Javaslat elfogadása",

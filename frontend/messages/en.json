@@ -1158,7 +1158,8 @@
     },
     "toasts": {
       "customLyricsSaved": "Custom lyrics applied. Manually sync each edited segment to ensure word timings are good for customised lyrics.",
-      "untimedWordsBlockSubmit": "{count, plural, one {# lyric word has} other {# lyric words have}} no timing yet. Open the synchronizer and tap each line to the beat before generating the video."
+      "untimedWordsBlockSubmit": "{count, plural, one {# lyric word has} other {# lyric words have}} no timing yet. Open the synchronizer and tap each line to the beat before generating the video.",
+      "syncReferenceSaveFailed": "Your review was saved, but the \"perfectly synced\" mark wasn't. Re-open the review to mark it again."
     },
     "modals": {
       "addLyrics": {
@@ -1346,7 +1347,10 @@
         "stemsWaitingTitle": "Still separating the music from the vocals…",
         "stemsWaitingDesc": "This usually takes a minute or two. When it's done, you'll be able to choose your instrumental and listen to the backing vocals right here. You don't need to close this window.",
         "stemsGaveUp": "The instrumental isn't ready yet, so you'll choose it on the next screen.",
-        "stemsWaitingProceed": "In a hurry? You can continue to the full instrumental review now instead."
+        "stemsWaitingProceed": "In a hurry? You can continue to the full instrumental review now instead.",
+        "syncReferenceLabel": "Admin: perfectly synced (add to the timing reference set)",
+        "syncReferenceHelp": "Tick only if you're confident the word timing is right throughout. Unticked tracks are treated as unverified.",
+        "syncReferenceNotesPlaceholder": "Notes (optional)"
       },
       "searchLyrics": {
         "artist": "Artist",

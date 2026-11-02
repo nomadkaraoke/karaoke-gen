@@ -1259,7 +1259,10 @@
         "stemsGaveUp": "Taustaraita ei ole vielä valmis, joten voit valita sen seuraavassa näkymässä.",
         "stemsWaitingDesc": "Tämä kestää yleensä minuutin tai kaksi. Kun se on valmis, voit valita taustaraidan ja kuunnella taustalauluja suoraan tässä. Tätä ikkunaa ei tarvitse sulkea.",
         "stemsWaitingTitle": "Musiikkia ja laulua erotellaan vielä toisistaan…",
-        "stemsWaitingProceed": "Onko kiire? Voit jatkaa koko instrumentaalin tarkistukseen heti sen sijaan."
+        "stemsWaitingProceed": "Onko kiire? Voit jatkaa koko instrumentaalin tarkistukseen heti sen sijaan.",
+        "syncReferenceHelp": "Valitse tämä vain, jos olet varma, että sanojen ajoitus on kohdallaan koko kappaleen ajan. Valitsemattomia raitoja pidetään vahvistamattomina.",
+        "syncReferenceLabel": "Ylläpito: täydellisesti synkronoitu (lisää ajoituksen viiteaineistoon)",
+        "syncReferenceNotesPlaceholder": "Muistiinpanot (valinnainen)"
       },
       "searchLyrics": {
         "artist": "Esittäjä",
@@ -1467,7 +1470,8 @@
     },
     "toasts": {
       "customLyricsSaved": "Mukautetut sanoitukset otettu käyttöön. Synkronoi jokainen muokattu segmentti manuaalisesti varmistaaksesi, että sanojen ajoitukset sopivat mukautettuihin sanoituksiin.",
-      "untimedWordsBlockSubmit": "{count, plural, one {# sanoituksen sanalta puuttuu} other {# sanoituksen sanalta puuttuu}} vielä ajoitus. Avaa synkronointityökalu ja napauta jokainen rivi biitin tahtiin ennen videon luomista."
+      "untimedWordsBlockSubmit": "{count, plural, one {# sanoituksen sanalta puuttuu} other {# sanoituksen sanalta puuttuu}} vielä ajoitus. Avaa synkronointityökalu ja napauta jokainen rivi biitin tahtiin ennen videon luomista.",
+      "syncReferenceSaveFailed": "Arviointisi tallennettiin, mutta \"täydellisesti synkronoitu\" -merkintää ei. Avaa arviointi uudelleen ja merkitse se uudestaan."
     },
     "autoCorrect": {
       "accept": "Hyväksy ehdotus",

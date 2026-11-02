@@ -1259,7 +1259,10 @@
         "stemsGaveUp": "Instrumentalspåret är inte klart än, så du får välja det på nästa skärm.",
         "stemsWaitingDesc": "Det här tar vanligtvis en minut eller två. När det är klart kan du välja instrumentalspår och lyssna på bakgrundssången här. Du behöver inte stänga det här fönstret.",
         "stemsWaitingTitle": "Separerar fortfarande musiken från sången…",
-        "stemsWaitingProceed": "Har du bråttom? Du kan fortsätta till granskningen av hela instrumentalversionen nu istället."
+        "stemsWaitingProceed": "Har du bråttom? Du kan fortsätta till granskningen av hela instrumentalversionen nu istället.",
+        "syncReferenceHelp": "Kryssa endast i om du är säker på att ordsynkningen stämmer rakt igenom. Okryssade spår behandlas som overifierade.",
+        "syncReferenceLabel": "Admin: perfekt synkad (lägg till i referensuppsättningen för timing)",
+        "syncReferenceNotesPlaceholder": "Anteckningar (valfritt)"
       },
       "searchLyrics": {
         "artist": "Artist",
@@ -1467,7 +1470,8 @@
     },
     "toasts": {
       "customLyricsSaved": "Anpassad låttext tillämpad. Synkronisera varje redigerat segment manuellt för att säkerställa att tajmingen stämmer för den anpassade låttexten.",
-      "untimedWordsBlockSubmit": "{count, plural, one {# ord i låttexten har} other {# ord i låttexten har}} ingen timing än. Öppna synkroniseraren och tryck på varje rad i takt med musiken innan du genererar videon."
+      "untimedWordsBlockSubmit": "{count, plural, one {# ord i låttexten har} other {# ord i låttexten har}} ingen timing än. Öppna synkroniseraren och tryck på varje rad i takt med musiken innan du genererar videon.",
+      "syncReferenceSaveFailed": "Din granskning sparades, men markeringen för \"perfekt synkad\" sparades inte. Öppna granskningen igen för att markera den på nytt."
     },
     "autoCorrect": {
       "accept": "Acceptera förslag",

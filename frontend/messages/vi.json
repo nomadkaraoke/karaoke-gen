@@ -1259,7 +1259,10 @@
         "stemsGaveUp": "Nhạc nền vẫn chưa sẵn sàng, bạn có thể chọn ở màn hình tiếp theo nhé.",
         "stemsWaitingDesc": "Quá trình này thường mất khoảng một hoặc hai phút. Khi hoàn tất, bạn sẽ có thể chọn nhạc nền và nghe phần bè ngay tại đây. Bạn không cần phải đóng cửa sổ này.",
         "stemsWaitingTitle": "Vẫn đang tách nhạc và giọng hát…",
-        "stemsWaitingProceed": "Bạn đang vội? Bạn có thể chuyển sang xem lại toàn bộ phần nhạc cụ ngay bây giờ."
+        "stemsWaitingProceed": "Bạn đang vội? Bạn có thể chuyển sang xem lại toàn bộ phần nhạc cụ ngay bây giờ.",
+        "syncReferenceHelp": "Chỉ tích chọn nếu bạn chắc chắn thời gian khớp từng từ đã chuẩn xác từ đầu đến cuối. Các bài chưa tích chọn sẽ được coi là chưa xác minh.",
+        "syncReferenceLabel": "Quản trị viên: khớp hoàn hảo (thêm vào bộ tham chiếu timing)",
+        "syncReferenceNotesPlaceholder": "Ghi chú (không bắt buộc)"
       },
       "searchLyrics": {
         "artist": "Nghệ sĩ",
@@ -1467,7 +1470,8 @@
     },
     "toasts": {
       "customLyricsSaved": "Đã áp dụng lời bài hát tùy chỉnh. Hãy đồng bộ hóa thủ công từng phân đoạn đã chỉnh sửa để đảm bảo nhịp điệu hiển thị từ khớp với lời bài hát tùy chỉnh.",
-      "untimedWordsBlockSubmit": "{count, plural, one {# từ trong lời bài hát} other {# từ trong lời bài hát}} chưa được khớp thời gian. Bạn hãy mở trình đồng bộ và nhấn từng dòng theo nhịp trước khi tạo video."
+      "untimedWordsBlockSubmit": "{count, plural, one {# từ trong lời bài hát} other {# từ trong lời bài hát}} chưa được khớp thời gian. Bạn hãy mở trình đồng bộ và nhấn từng dòng theo nhịp trước khi tạo video.",
+      "syncReferenceSaveFailed": "Đánh giá của bạn đã được lưu, nhưng dấu \"khớp hoàn hảo\" thì chưa lưu được. Bạn hãy mở lại phần đánh giá để đánh dấu lại nhé."
     },
     "autoCorrect": {
       "accept": "Chấp nhận đề xuất",

@@ -9,6 +9,7 @@ import { AlertTriangle, ArrowLeft, ArrowRight, Loader2 } from 'lucide-react'
 import PreviewVideoSection, { PreviewVideoHandle } from '../PreviewVideoSection'
 import BackingVocalsWaveform from '../BackingVocalsWaveform'
 import type { LateInstrumentalStatus } from '@/lib/lyrics-review/hooks/useLateInstrumentalStems'
+import { useAuth } from '@/lib/auth'
 
 interface WaveformDataResult {
   amplitudes: number[]
@@ -41,7 +42,9 @@ interface ReviewChangesModalProps {
   /** Late-stems poll state: `waiting` = audio separation still running, so the
    *  instrumental choice isn't available yet; `gave_up` = it didn't arrive in time. */
   stemsStatus?: LateInstrumentalStatus
-  onSubmit: () => void
+  /** `syncReference` is set only for admins who ticked (or un-ticked a previously
+   *  saved) "perfectly synced" mark; the caller saves it after the timing is saved. */
+  onSubmit: (opts?: { syncReference?: { verified: boolean; notes?: string } }) => void
   isSubmitting?: boolean
   apiClient?: ApiClient | null
   timingOffsetMs?: number
@@ -152,9 +155,24 @@ export default function ReviewChangesModal({
     )
   }
 
+  // Admin-only "perfectly synced" mark: verified jobs join the word-timing reference
+  // set used to train and evaluate the aligner. Unticked = unverified. Starts from
+  // the saved mark so a re-review can see and revoke it.
+  const isAdmin = useAuth((s) => s.user?.role === 'admin')
+  const savedVerified = !!data.sync_reference?.verified
+  const [syncVerified, setSyncVerified] = useState(savedVerified)
+  const [syncNotes, setSyncNotes] = useState(data.sync_reference?.notes || '')
+  // Once touched, always send the current state: a mark saved earlier in this
+  // session (then a failed submit) must still be revocable by un-ticking.
+  const [syncTouched, setSyncTouched] = useState(false)
+
   const handleSubmit = () => {
     if (isSubmitting) return
-    onSubmit()
+    if (isAdmin && (syncVerified || savedVerified || syncTouched)) {
+      onSubmit({ syncReference: { verified: syncVerified, notes: syncNotes.trim() || undefined } })
+    } else {
+      onSubmit()
+    }
   }
 
   return (
@@ -300,6 +318,34 @@ export default function ReviewChangesModal({
                   />
                 )}
               </>
+            )}
+          </div>
+        )}
+
+        {isAdmin && (
+          <div className="rounded-md border border-dashed p-3 text-sm space-y-2" data-testid="sync-reference">
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={syncVerified}
+                onChange={(e) => { setSyncVerified(e.target.checked); setSyncTouched(true) }}
+                data-testid="sync-reference-checkbox"
+              />
+              <span>
+                <span className="font-medium">{t('syncReferenceLabel')}</span>
+                <span className="block text-muted-foreground text-xs">{t('syncReferenceHelp')}</span>
+              </span>
+            </label>
+            {syncVerified && (
+              <input
+                type="text"
+                value={syncNotes}
+                onChange={(e) => setSyncNotes(e.target.value)}
+                placeholder={t('syncReferenceNotesPlaceholder')}
+                className="w-full rounded border bg-background px-2 py-1 text-xs"
+                data-testid="sync-reference-notes"
+              />
             )}
           </div>
         )}

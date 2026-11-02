@@ -1259,7 +1259,10 @@
         "stemsGaveUp": "Instrumentalul nu este încă gata, așa că îl vei alege pe ecranul următor.",
         "stemsWaitingDesc": "De obicei, durează un minut sau două. Când este gata, vei putea să-ți alegi instrumentalul și să asculți vocile de fundal chiar aici. Nu este nevoie să închizi această fereastră.",
         "stemsWaitingTitle": "Încă separăm muzica de voce…",
-        "stemsWaitingProceed": "Te grăbești? Poți trece direct la verificarea completă a părții instrumentale acum."
+        "stemsWaitingProceed": "Te grăbești? Poți trece direct la verificarea completă a părții instrumentale acum.",
+        "syncReferenceHelp": "Bifează doar dacă ești sigur că sincronizarea cuvintelor este corectă de la cap la coadă. Piesele nebifate sunt considerate neverificate.",
+        "syncReferenceLabel": "Admin: sincronizat perfect (adaugă la setul de referință pentru sincronizare)",
+        "syncReferenceNotesPlaceholder": "Notițe (opțional)"
       },
       "searchLyrics": {
         "artist": "Artist",
@@ -1467,7 +1470,8 @@
     },
     "toasts": {
       "customLyricsSaved": "Versurile personalizate au fost aplicate. Sincronizează manual fiecare segment editat pentru a te asigura că temporizarea cuvintelor este corectă pentru versurile personalizate.",
-      "untimedWordsBlockSubmit": "{count, plural, one {# cuvânt din versuri nu are} few {# cuvinte din versuri nu au} other {# de cuvinte din versuri nu au}} încă sincronizare. Deschide sincronizatorul și apasă pe fiecare vers pe ritm înainte de a genera videoclipul."
+      "untimedWordsBlockSubmit": "{count, plural, one {# cuvânt din versuri nu are} few {# cuvinte din versuri nu au} other {# de cuvinte din versuri nu au}} încă sincronizare. Deschide sincronizatorul și apasă pe fiecare vers pe ritm înainte de a genera videoclipul.",
+      "syncReferenceSaveFailed": "Verificarea ta a fost salvată, dar marcajul „perfect sincronizat” nu. Redeschide verificarea pentru a marca din nou piesa."
     },
     "autoCorrect": {
       "accept": "Acceptă sugestia",

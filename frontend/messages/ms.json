@@ -1259,7 +1259,10 @@
         "stemsGaveUp": "Muzik instrumental belum siap lagi, jadi anda boleh memilihnya di skrin seterusnya.",
         "stemsWaitingDesc": "Ini biasanya mengambil masa satu atau dua minit. Setelah selesai, anda boleh memilih muzik instrumental dan mendengar vokal latar di sini. Anda tidak perlu menutup tetingkap ini.",
         "stemsWaitingTitle": "Masih mengasingkan muzik daripada vokal…",
-        "stemsWaitingProceed": "Mahu cepat? Anda boleh teruskan ke semakan instrumental penuh sekarang."
+        "stemsWaitingProceed": "Mahu cepat? Anda boleh teruskan ke semakan instrumental penuh sekarang.",
+        "syncReferenceHelp": "Tandakan hanya jika anda yakin pemasaan perkataan adalah tepat sepenuhnya. Trek yang tidak ditandakan akan dianggap sebagai belum disahkan.",
+        "syncReferenceLabel": "Admin: disegerakkan dengan sempurna (tambah pada set rujukan pemasaan)",
+        "syncReferenceNotesPlaceholder": "Nota (pilihan)"
       },
       "searchLyrics": {
         "artist": "Artis",
@@ -1467,7 +1470,8 @@
     },
     "toasts": {
       "customLyricsSaved": "Lirik tersuai digunakan. Segerakkan setiap segmen yang disunting secara manual untuk memastikan pemasaan perkataan adalah tepat untuk lirik tersuai.",
-      "untimedWordsBlockSubmit": "{count, plural, one {# perkataan lirik belum ada pemasaan} other {# perkataan lirik belum ada pemasaan}}. Buka penyegerak dan ketik setiap baris mengikut rentak sebelum menjana video."
+      "untimedWordsBlockSubmit": "{count, plural, one {# perkataan lirik belum ada pemasaan} other {# perkataan lirik belum ada pemasaan}}. Buka penyegerak dan ketik setiap baris mengikut rentak sebelum menjana video.",
+      "syncReferenceSaveFailed": "Semakan anda telah disimpan, tetapi tanda \"segerak sempurna\" tidak berjaya disimpan. Buka semula semakan untuk menandakannya lagi."
     },
     "autoCorrect": {
       "accept": "Terima cadangan",

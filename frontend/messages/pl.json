@@ -1259,7 +1259,10 @@
         "stemsGaveUp": "Wersja instrumentalna nie jest jeszcze gotowa, więc wybierzesz ją na następnym ekranie.",
         "stemsWaitingDesc": "Zazwyczaj zajmuje to minutę lub dwie. Gdy wszystko będzie gotowe, wybierzesz wersję instrumentalną i odsłuchasz chórki bezpośrednio tutaj. Nie musisz zamykać tego okna.",
         "stemsWaitingTitle": "Nadal trwa oddzielanie muzyki od wokalu…",
-        "stemsWaitingProceed": "Śpieszysz się? Zamiast tego możesz przejść teraz do pełnego przeglądu wersji instrumentalnej."
+        "stemsWaitingProceed": "Śpieszysz się? Zamiast tego możesz przejść teraz do pełnego przeglądu wersji instrumentalnej.",
+        "syncReferenceHelp": "Zaznacz tylko wtedy, gdy masz pewność, że synchronizacja słów jest prawidłowa w całym utworze. Niezaznaczone utwory są traktowane jako niezweryfikowane.",
+        "syncReferenceLabel": "Admin: idealnie zsynchronizowane (dodaj do referencyjnego zbioru synchronizacji)",
+        "syncReferenceNotesPlaceholder": "Notatki (opcjonalnie)"
       },
       "searchLyrics": {
         "artist": "Wykonawca",
@@ -1467,7 +1470,8 @@
     },
     "toasts": {
       "customLyricsSaved": "Zastosowano własny tekst. Zsynchronizuj ręcznie każdy edytowany segment, aby upewnić się, że czas wyświetlania słów pasuje do nowego tekstu.",
-      "untimedWordsBlockSubmit": "{count, plural, one {# słowo tekstu nie ma} few {# słowa tekstu nie mają} many {# słów tekstu nie ma} other {# słów tekstu nie ma}} jeszcze synchronizacji. Otwórz synchronizator i wystukaj każdą linijkę do rytmu przed wygenerowaniem wideo."
+      "untimedWordsBlockSubmit": "{count, plural, one {# słowo tekstu nie ma} few {# słowa tekstu nie mają} many {# słów tekstu nie ma} other {# słów tekstu nie ma}} jeszcze synchronizacji. Otwórz synchronizator i wystukaj każdą linijkę do rytmu przed wygenerowaniem wideo.",
+      "syncReferenceSaveFailed": "Twoja weryfikacja została zapisana, ale oznaczenie „idealnie zsynchronizowane” nie. Otwórz weryfikację ponownie, aby oznaczyć ją jeszcze raz."
     },
     "autoCorrect": {
       "accept": "Zaakceptuj sugestię",

@@ -1259,7 +1259,10 @@
         "stemsGaveUp": "La pista instrumental encara no està a punt, així que la triaràs a la pantalla següent.",
         "stemsWaitingDesc": "Això sol trigar un parell de minuts. Quan hagi acabat, podràs triar la pista instrumental i escoltar les veus de fons aquí mateix. No cal que tanquis aquesta finestra.",
         "stemsWaitingTitle": "Encara s'està separant la música de la veu…",
-        "stemsWaitingProceed": "Tens pressa? Pots passar directament a la revisió instrumental completa."
+        "stemsWaitingProceed": "Tens pressa? Pots passar directament a la revisió instrumental completa.",
+        "syncReferenceHelp": "Marca-ho només si estàs segur que la sincronització de les paraules és correcta de principi a fi. Les pistes desmarcades es consideren no verificades.",
+        "syncReferenceLabel": "Administració: perfectament sincronitzat (afegeix al conjunt de referència de sincronització)",
+        "syncReferenceNotesPlaceholder": "Notes (opcional)"
       },
       "searchLyrics": {
         "artist": "Artista",
@@ -1467,7 +1470,8 @@
     },
     "toasts": {
       "customLyricsSaved": "Lletra personalitzada aplicada. Sincronitza manualment cada segment editat per assegurar-te que els temps de les paraules són correctes per a la lletra personalitzada.",
-      "untimedWordsBlockSubmit": "{count, plural, one {# paraula de la lletra encara no té} other {# paraules de la lletra encara no tenen}} sincronització. Obre el sincronitzador i prem cada línia al ritme abans de generar el vídeo."
+      "untimedWordsBlockSubmit": "{count, plural, one {# paraula de la lletra encara no té} other {# paraules de la lletra encara no tenen}} sincronització. Obre el sincronitzador i prem cada línia al ritme abans de generar el vídeo.",
+      "syncReferenceSaveFailed": "La teva revisió s'ha desat, però la marca de «sincronització perfecta» no. Torna a obrir la revisió per marcar-la una altra vegada."
     },
     "autoCorrect": {
       "accept": "Accepta el suggeriment",

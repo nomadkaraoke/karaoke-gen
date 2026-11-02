@@ -1259,7 +1259,10 @@
         "stemsGaveUp": "Hindi pa handa ang instrumental, kaya pipiliin mo ito sa susunod na screen.",
         "stemsWaitingDesc": "Karaniwan itong tumatagal nang isa o dalawang minuto. Kapag tapos na, mapipili mo na ang iyong instrumental at maririnig ang backing vocals dito mismo. Hindi mo kailangang isara ang window na ito.",
         "stemsWaitingTitle": "Hinihiwalay pa ang musika mula sa boses…",
-        "stemsWaitingProceed": "Nagmamadali? Maaari ka nang tumuloy sa buong instrumental review ngayon."
+        "stemsWaitingProceed": "Nagmamadali? Maaari ka nang tumuloy sa buong instrumental review ngayon.",
+        "syncReferenceHelp": "Lagyan lamang ng tsek kung sigurado kang tama ang timing ng bawat salita mula simula hanggang dulo. Ang mga track na walang tsek ay ituturing na hindi pa nabeberipika.",
+        "syncReferenceLabel": "Admin: perpektong naka-sync (idagdag sa timing reference set)",
+        "syncReferenceNotesPlaceholder": "Mga Tala (opsyonal)"
       },
       "searchLyrics": {
         "artist": "Artist",
@@ -1467,7 +1470,8 @@
     },
     "toasts": {
       "customLyricsSaved": "Nailapat na ang custom na lyrics. I-sync nang manu-mano ang bawat na-edit na segment para masigurong maayos ang timing ng mga salita sa na-customize na lyrics.",
-      "untimedWordsBlockSubmit": "{count, plural, one {# salita sa lyrics ang} other {# salita sa lyrics ang}} wala pang timing. Buksan ang synchronizer at i-tap ang bawat linya kasabay ng beat bago i-generate ang video."
+      "untimedWordsBlockSubmit": "{count, plural, one {# salita sa lyrics ang} other {# salita sa lyrics ang}} wala pang timing. Buksan ang synchronizer at i-tap ang bawat linya kasabay ng beat bago i-generate ang video.",
+      "syncReferenceSaveFailed": "Na-save ang iyong review, ngunit hindi ang \"perfectly synced\" na marka. Buksan muli ang review para markahan ito ulit."
     },
     "autoCorrect": {
       "accept": "Tanggapin ang mungkahi",

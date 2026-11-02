@@ -1259,7 +1259,10 @@
         "stemsGaveUp": "Instrumentálka ještě není připravená, takže si ji vybereš na další obrazovce.",
         "stemsWaitingDesc": "Obvykle to trvá minutu nebo dvě. Až to bude hotové, budeš si moct přímo tady vybrat instrumentálku a poslechnout si doprovodné vokály. Toto okno nemusíš zavírat.",
         "stemsWaitingTitle": "Stále oddělujeme hudbu od vokálů…",
-        "stemsWaitingProceed": "Spěcháš? Místo toho můžeš hned pokračovat ke kontrole celé instrumentální stopy."
+        "stemsWaitingProceed": "Spěcháš? Místo toho můžeš hned pokračovat ke kontrole celé instrumentální stopy.",
+        "syncReferenceHelp": "Zaškrtni jen tehdy, pokud si bezpečně stojíš za tím, že časování slov sedí v celé skladbě. Nezaškrtnuté stopy jsou považovány za neověřené.",
+        "syncReferenceLabel": "Admin: dokonale synchronizováno (přidat do sady referenčního časování)",
+        "syncReferenceNotesPlaceholder": "Poznámky (volitelné)"
       },
       "searchLyrics": {
         "artist": "Interpret",
@@ -1467,7 +1470,8 @@
     },
     "toasts": {
       "customLyricsSaved": "Vlastní text byl aplikován. Ručně synchronizuj každý upravený segment, aby bylo zajištěno správné načasování slov pro upravený text.",
-      "untimedWordsBlockSubmit": "{count, plural, one {# slovo textu ještě nemá} few {# slova textu ještě nemají} other {# slov textu ještě nemá}} časování. Otevři synchronizátor a před vygenerováním videa odklepej každý řádek do rytmu."
+      "untimedWordsBlockSubmit": "{count, plural, one {# slovo textu ještě nemá} few {# slova textu ještě nemají} other {# slov textu ještě nemá}} časování. Otevři synchronizátor a před vygenerováním videa odklepej každý řádek do rytmu.",
+      "syncReferenceSaveFailed": "Tvoje kontrola byla uložena, ale označení „dokonale synchronizováno“ ne. Otevři kontrolu znovu a označ ji ještě jednou."
     },
     "autoCorrect": {
       "accept": "Přijmout návrh",

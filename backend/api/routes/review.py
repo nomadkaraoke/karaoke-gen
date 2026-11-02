@@ -45,7 +45,7 @@ from backend.services.job_logging import job_log_context, JobLogger
 from backend.services.tracing import create_span, add_span_attribute, add_span_event
 from backend.services.auto_approval.instrumental import with_unified_recommendation
 from backend.services.encoding_service import get_encoding_service
-from backend.api.dependencies import require_auth, require_review_auth
+from backend.api.dependencies import require_admin, require_auth, require_review_auth
 from backend.utils.stems import vocals_stem_path as _vocals_stem_path
 from backend.services.auth_service import UserType
 from backend.config import get_settings
@@ -909,6 +909,10 @@ async def get_correction_data(
         # "evidenced" gaps and offers the reference lines for insertion.
         corrections_data['vocal_gaps'] = job.state_data.get('vocal_gaps') or None
 
+        # Admin "perfectly synced" mark (word-timing reference set), so a re-review
+        # shows the existing mark and can revoke it.
+        corrections_data['sync_reference'] = job.state_data.get('sync_reference') or None
+
         # Per-screen skip (C1): tell the frontend whether each review half is
         # confidently auto-resolved, so it can skip the instrumental screen (or the
         # lyrics screen). Derived from the stored auto-approval verdict + the job's
@@ -1325,6 +1329,44 @@ async def complete_review(
         "status": "success",
         "instrumental_selection": instrumental_selection,
     }
+
+
+class SyncReferenceRequest(_PydBaseModel):
+    verified: bool
+    notes: Optional[str] = None
+
+
+@router.post("/{job_id}/sync-reference")
+async def set_sync_reference(job_id: str, body: SyncReferenceRequest, auth_result=Depends(require_admin)):
+    """Admin-only: mark this job's reviewed word timing as "perfectly synced".
+
+    Verified jobs form the reference set for word-timing training and evaluation
+    (full-auto v2). A tick means the admin is confident the sync is right, from a
+    listen or a confident spot-check; jobs never marked are treated as unverified.
+    """
+    from datetime import datetime, timezone
+
+    job_manager = JobManager()
+    job = await asyncio.to_thread(job_manager.get_job, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
+    # A "verified" mark vouches for reviewed timing, so it needs saved review output.
+    lyrics_urls = ((job.file_urls or {}).get("lyrics") or {}) if isinstance(job.file_urls, dict) else {}
+    if body.verified and not lyrics_urls.get("corrections_updated"):
+        # Older jobs may have the file without the file_urls pointer (same fallback
+        # get_correction_data uses).
+        direct = f"jobs/{job_id}/lyrics/corrections_updated.json"
+        if not await asyncio.to_thread(StorageService().file_exists, direct):
+            raise HTTPException(status_code=409, detail="No reviewed lyrics saved yet; save the review first")
+    record = {
+        "verified": body.verified,
+        "by": auth_result.user_email or str(auth_result.user_type),
+        "at": datetime.now(timezone.utc).isoformat(),
+        "notes": (body.notes or "").strip()[:2000] or None,
+    }
+    await asyncio.to_thread(job_manager.update_state_data, job_id, "sync_reference", record)
+    logger.info(f"Job {job_id}: sync_reference verified={body.verified} by {record['by']}")
+    return {"status": "success", "sync_reference": record}
 
 
 def _fake_complete_failure_hook(job_id: str) -> None:

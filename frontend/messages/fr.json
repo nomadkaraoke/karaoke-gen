@@ -1259,7 +1259,10 @@
         "stemsGaveUp": "L'instrumentale n'est pas encore prête, tu pourras donc la choisir sur l'écran suivant.",
         "stemsWaitingDesc": "Cela prend généralement une minute ou deux. Une fois terminé, tu pourras choisir ton instrumentale et écouter les chœurs directement ici. Tu n'as pas besoin de fermer cette fenêtre.",
         "stemsWaitingTitle": "Séparation de la musique et de la voix toujours en cours…",
-        "stemsWaitingProceed": "Tu es pressé ? Tu peux passer directement à la vérification de l'instrumental complet dès maintenant."
+        "stemsWaitingProceed": "Tu es pressé ? Tu peux passer directement à la vérification de l'instrumental complet dès maintenant.",
+        "syncReferenceHelp": "Coche cette case uniquement si tu as la certitude que la synchronisation des mots est correcte d'un bout à l'autre. Les pistes non cochées sont considérées comme non vérifiées.",
+        "syncReferenceLabel": "Admin : synchronisation parfaite (ajouter au jeu de données de référence temporelle)",
+        "syncReferenceNotesPlaceholder": "Notes (facultatif)"
       },
       "searchLyrics": {
         "artist": "Artiste",
@@ -1467,7 +1470,8 @@
     },
     "toasts": {
       "customLyricsSaved": "Paroles personnalisées appliquées. Synchronise manuellement chaque segment modifié pour t'assurer que le timing des mots est correct.",
-      "untimedWordsBlockSubmit": "{count, plural, one {# mot n'a} other {# mots n'ont}} pas encore de timing. Ouvre le synchroniseur et appuie sur chaque ligne en rythme avant de générer la vidéo."
+      "untimedWordsBlockSubmit": "{count, plural, one {# mot n'a} other {# mots n'ont}} pas encore de timing. Ouvre le synchroniseur et appuie sur chaque ligne en rythme avant de générer la vidéo.",
+      "syncReferenceSaveFailed": "Ton avis a été enregistré, mais pas la mention « parfaitement synchronisé ». Rouvre la révision pour l'indiquer à nouveau."
     },
     "autoCorrect": {
       "accept": "Accepter la suggestion",

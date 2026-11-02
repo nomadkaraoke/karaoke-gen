@@ -1259,7 +1259,10 @@
         "stemsGaveUp": "Instrumentalversionen er ikke klar endnu, så du vælger den på næste skærm.",
         "stemsWaitingDesc": "Det tager normalt et minut eller to. Når det er færdigt, kan du vælge din instrumentalversion og lytte til korstemmerne lige her. Du behøver ikke at lukke dette vindue.",
         "stemsWaitingTitle": "Adskiller stadig musikken fra vokalen…",
-        "stemsWaitingProceed": "Har du travlt? Du kan fortsætte til den fulde gennemgang af instrumentalsporet nu i stedet."
+        "stemsWaitingProceed": "Har du travlt? Du kan fortsætte til den fulde gennemgang af instrumentalsporet nu i stedet.",
+        "syncReferenceHelp": "Markér kun, hvis du er sikker på, at ordtimingen er korrekt hele vejen igennem. Umarkerede spor behandles som ubekræftede.",
+        "syncReferenceLabel": "Admin: perfekt synkroniseret (føj til timing-referencesættet)",
+        "syncReferenceNotesPlaceholder": "Noter (valgfrit)"
       },
       "searchLyrics": {
         "artist": "Kunstner",
@@ -1467,7 +1470,8 @@
     },
     "toasts": {
       "customLyricsSaved": "Tilpasset sangtekst anvendt. Synkroniser manuelt hvert redigeret segment for at sikre, at ordtimingen passer til den tilpassede sangtekst.",
-      "untimedWordsBlockSubmit": "{count, plural, one {# ord i sangteksten har} other {# ord i sangteksten har}} endnu ingen timing. Åbn synkroniseringsværktøjet og tryk på hver linje i takt med rytmen, før du genererer videoen."
+      "untimedWordsBlockSubmit": "{count, plural, one {# ord i sangteksten har} other {# ord i sangteksten har}} endnu ingen timing. Åbn synkroniseringsværktøjet og tryk på hver linje i takt med rytmen, før du genererer videoen.",
+      "syncReferenceSaveFailed": "Din gennemgang blev gemt, men markeringen som \"perfekt synkroniseret\" blev ikke. Åbn gennemgangen igen for at markere den på ny."
     },
     "autoCorrect": {
       "accept": "Accepter forslag",

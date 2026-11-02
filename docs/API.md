@@ -452,6 +452,16 @@ Content-Type: application/json
 
 Saves corrections, stores instrumental selection, and triggers video rendering. The instrumental selection is now required as part of the combined review flow.
 
+#### Mark sync as reference (admin only)
+
+```
+POST /api/review/{job_id}/sync-reference
+{"verified": true, "notes": "optional"}
+```
+Admin users only (403 otherwise). Stores `state_data.sync_reference = {verified, by, at, notes}`.
+Verified jobs form the word-timing reference set for aligner training/evaluation (full-auto v2).
+The lyrics review modal shows the checkbox to admins; unticked jobs are treated as unverified.
+
 #### Generate Preview
 
 ```http

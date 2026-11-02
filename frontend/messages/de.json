@@ -1259,7 +1259,10 @@
         "stemsGaveUp": "Das Instrumental ist noch nicht bereit, daher wählst du es auf dem nächsten Bildschirm aus.",
         "stemsWaitingDesc": "Das dauert normalerweise ein oder zwei Minuten. Sobald es fertig ist, kannst du direkt hier dein Instrumental auswählen und den Hintergrundgesang anhören. Du musst dieses Fenster nicht schließen.",
         "stemsWaitingTitle": "Die Musik wird noch vom Gesang getrennt…",
-        "stemsWaitingProceed": "Hast du es eilig? Du kannst stattdessen jetzt direkt mit der Überprüfung des gesamten Instrumentals fortfahren."
+        "stemsWaitingProceed": "Hast du es eilig? Du kannst stattdessen jetzt direkt mit der Überprüfung des gesamten Instrumentals fortfahren.",
+        "syncReferenceHelp": "Setze das Häkchen nur, wenn du sicher bist, dass das Wort-Timing durchgehend stimmt. Nicht angehakte Spuren werden als unbestätigt behandelt.",
+        "syncReferenceLabel": "Admin: perfekt synchronisiert (zum Timing-Referenzsatz hinzufügen)",
+        "syncReferenceNotesPlaceholder": "Notizen (optional)"
       },
       "searchLyrics": {
         "artist": "Künstler",
@@ -1467,7 +1470,8 @@
     },
     "toasts": {
       "customLyricsSaved": "Benutzerdefinierter Text angewendet. Synchronisiere jedes bearbeitete Segment manuell, um sicherzustellen, dass das Wort-Timing für den neuen Text stimmt.",
-      "untimedWordsBlockSubmit": "{count, plural, one {# Wort im Text hat} other {# Wörter im Text haben}} noch kein Timing. Öffne die Textsynchronisation und tippe jede Zeile im Takt an, bevor du das Video generierst."
+      "untimedWordsBlockSubmit": "{count, plural, one {# Wort im Text hat} other {# Wörter im Text haben}} noch kein Timing. Öffne die Textsynchronisation und tippe jede Zeile im Takt an, bevor du das Video generierst.",
+      "syncReferenceSaveFailed": "Deine Überprüfung wurde gespeichert, aber die Markierung „perfekt synchronisiert“ nicht. Öffne die Überprüfung erneut, um sie noch einmal zu markieren."
     },
     "autoCorrect": {
       "accept": "Vorschlag akzeptieren",
