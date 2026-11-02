@@ -1470,7 +1470,8 @@
     },
     "toasts": {
       "customLyricsSaved": "Paroles personnalisées appliquées. Synchronise manuellement chaque segment modifié pour t'assurer que le timing des mots est correct.",
-      "untimedWordsBlockSubmit": "{count, plural, one {# mot n'a} other {# mots n'ont}} pas encore de timing. Ouvre le synchroniseur et appuie sur chaque ligne en rythme avant de générer la vidéo."
+      "untimedWordsBlockSubmit": "{count, plural, one {# mot n'a} other {# mots n'ont}} pas encore de timing. Ouvre le synchroniseur et appuie sur chaque ligne en rythme avant de générer la vidéo.",
+      "syncReferenceSaveFailed": "Ton avis a été enregistré, mais pas la mention « parfaitement synchronisé ». Rouvre la révision pour l'indiquer à nouveau."
     },
     "autoCorrect": {
       "accept": "Accepter la suggestion",

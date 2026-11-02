@@ -1470,7 +1470,8 @@
     },
     "toasts": {
       "customLyricsSaved": "Testo personalizzato applicato. Sincronizza manualmente ogni segmento modificato per assicurarti che il tempismo delle parole sia corretto per il testo personalizzato.",
-      "untimedWordsBlockSubmit": "{count, plural, one {# parola del testo non è ancora sincronizzata} other {# parole del testo non sono ancora sincronizzate}}. Apri il sincronizzatore e tocca ogni riga a tempo prima di generare il video."
+      "untimedWordsBlockSubmit": "{count, plural, one {# parola del testo non è ancora sincronizzata} other {# parole del testo non sono ancora sincronizzate}}. Apri il sincronizzatore e tocca ogni riga a tempo prima di generare il video.",
+      "syncReferenceSaveFailed": "La tua revisione è stata salvata, ma il contrassegno \"perfettamente sincronizzato\" no. Riapri la revisione per contrassegnarlo di nuovo."
     },
     "autoCorrect": {
       "accept": "Accetta suggerimento",

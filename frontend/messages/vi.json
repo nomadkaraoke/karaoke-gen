@@ -1470,7 +1470,8 @@
     },
     "toasts": {
       "customLyricsSaved": "Đã áp dụng lời bài hát tùy chỉnh. Hãy đồng bộ hóa thủ công từng phân đoạn đã chỉnh sửa để đảm bảo nhịp điệu hiển thị từ khớp với lời bài hát tùy chỉnh.",
-      "untimedWordsBlockSubmit": "{count, plural, one {# từ trong lời bài hát} other {# từ trong lời bài hát}} chưa được khớp thời gian. Bạn hãy mở trình đồng bộ và nhấn từng dòng theo nhịp trước khi tạo video."
+      "untimedWordsBlockSubmit": "{count, plural, one {# từ trong lời bài hát} other {# từ trong lời bài hát}} chưa được khớp thời gian. Bạn hãy mở trình đồng bộ và nhấn từng dòng theo nhịp trước khi tạo video.",
+      "syncReferenceSaveFailed": "Đánh giá của bạn đã được lưu, nhưng dấu \"khớp hoàn hảo\" thì chưa lưu được. Bạn hãy mở lại phần đánh giá để đánh dấu lại nhé."
     },
     "autoCorrect": {
       "accept": "Chấp nhận đề xuất",

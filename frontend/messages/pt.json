@@ -1470,7 +1470,8 @@
     },
     "toasts": {
       "customLyricsSaved": "Letras personalizadas aplicadas. Sincronize manualmente cada segmento editado para garantir que o tempo das palavras fique adequado para as novas letras.",
-      "untimedWordsBlockSubmit": "{count, plural, one {# palavra da letra ainda não tem} other {# palavras da letra ainda não têm}} sincronização. Abra o sincronizador e toque em cada linha no ritmo antes de gerar o vídeo."
+      "untimedWordsBlockSubmit": "{count, plural, one {# palavra da letra ainda não tem} other {# palavras da letra ainda não têm}} sincronização. Abra o sincronizador e toque em cada linha no ritmo antes de gerar o vídeo.",
+      "syncReferenceSaveFailed": "Sua revisão foi salva, mas a marcação de \"perfeitamente sincronizada\" não. Reabra a revisão para marcá-la novamente."
     },
     "autoCorrect": {
       "accept": "Aceitar sugestão",

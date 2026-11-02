@@ -1470,7 +1470,8 @@
     },
     "toasts": {
       "customLyricsSaved": "Zastosowano własny tekst. Zsynchronizuj ręcznie każdy edytowany segment, aby upewnić się, że czas wyświetlania słów pasuje do nowego tekstu.",
-      "untimedWordsBlockSubmit": "{count, plural, one {# słowo tekstu nie ma} few {# słowa tekstu nie mają} many {# słów tekstu nie ma} other {# słów tekstu nie ma}} jeszcze synchronizacji. Otwórz synchronizator i wystukaj każdą linijkę do rytmu przed wygenerowaniem wideo."
+      "untimedWordsBlockSubmit": "{count, plural, one {# słowo tekstu nie ma} few {# słowa tekstu nie mają} many {# słów tekstu nie ma} other {# słów tekstu nie ma}} jeszcze synchronizacji. Otwórz synchronizator i wystukaj każdą linijkę do rytmu przed wygenerowaniem wideo.",
+      "syncReferenceSaveFailed": "Twoja weryfikacja została zapisana, ale oznaczenie „idealnie zsynchronizowane” nie. Otwórz weryfikację ponownie, aby oznaczyć ją jeszcze raz."
     },
     "autoCorrect": {
       "accept": "Zaakceptuj sugestię",

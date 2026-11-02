@@ -1470,7 +1470,8 @@
     },
     "toasts": {
       "customLyricsSaved": "Lirik kustom berhasil diterapkan. Sinkronkan setiap segmen yang diedit secara manual untuk memastikan ketepatan waktu lirik yang baru.",
-      "untimedWordsBlockSubmit": "{count, plural, one {# kata lirik} other {# kata lirik}} belum diatur waktunya. Buka alat sinkronisasi dan ketuk setiap baris mengikuti irama sebelum membuat video."
+      "untimedWordsBlockSubmit": "{count, plural, one {# kata lirik} other {# kata lirik}} belum diatur waktunya. Buka alat sinkronisasi dan ketuk setiap baris mengikuti irama sebelum membuat video.",
+      "syncReferenceSaveFailed": "Ulasan Anda telah disimpan, tetapi tanda \"sinkron sempurna\" gagal disimpan. Buka kembali ulasan untuk menandainya lagi."
     },
     "autoCorrect": {
       "accept": "Terima saran",

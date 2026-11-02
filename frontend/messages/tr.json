@@ -1470,7 +1470,8 @@
     },
     "toasts": {
       "customLyricsSaved": "Özel şarkı sözleri uygulandı. Özelleştirilmiş sözlerde kelime zamanlamalarının doğru olduğundan emin olmak için düzenlenen her bölümü manuel olarak senkronize et.",
-      "untimedWordsBlockSubmit": "{count, plural, one {# kelimenin} other {# kelimenin}} henüz zamanlaması yok. Videoyu oluşturmadan önce senkronizatörü aç ve her satıra ritme göre dokun."
+      "untimedWordsBlockSubmit": "{count, plural, one {# kelimenin} other {# kelimenin}} henüz zamanlaması yok. Videoyu oluşturmadan önce senkronizatörü aç ve her satıra ritme göre dokun.",
+      "syncReferenceSaveFailed": "İncelemen kaydedildi ancak \"kusursuz senkronize\" işareti kaydedilemedi. Tekrar işaretlemek için incelemeyi yeniden aç."
     },
     "autoCorrect": {
       "accept": "Öneriyi kabul et",

@@ -1347,8 +1347,13 @@ async def set_sync_reference(job_id: str, body: SyncReferenceRequest, auth_resul
     from datetime import datetime, timezone
 
     job_manager = JobManager()
-    if not await asyncio.to_thread(job_manager.get_job, job_id):
+    job = await asyncio.to_thread(job_manager.get_job, job_id)
+    if not job:
         raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
+    # A "verified" mark vouches for reviewed timing, so it needs saved review output.
+    lyrics_urls = ((job.file_urls or {}).get("lyrics") or {}) if isinstance(job.file_urls, dict) else {}
+    if body.verified and not lyrics_urls.get("corrections_updated"):
+        raise HTTPException(status_code=409, detail="No reviewed lyrics saved yet; save the review first")
     record = {
         "verified": body.verified,
         "by": auth_result.user_email or str(auth_result.user_type),

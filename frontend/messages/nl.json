@@ -1470,7 +1470,8 @@
     },
     "toasts": {
       "customLyricsSaved": "Aangepaste songtekst toegepast. Synchroniseer elk bewerkt segment handmatig zodat de timing van de woorden perfect aansluit op de nieuwe songtekst.",
-      "untimedWordsBlockSubmit": "{count, plural, one {# woord in de songtekst heeft} other {# woorden in de songtekst hebben}} nog geen timing. Open de synchronizer en tik elke regel mee op de maat voordat je de video genereert."
+      "untimedWordsBlockSubmit": "{count, plural, one {# woord in de songtekst heeft} other {# woorden in de songtekst hebben}} nog geen timing. Open de synchronizer en tik elke regel mee op de maat voordat je de video genereert.",
+      "syncReferenceSaveFailed": "Je beoordeling is opgeslagen, maar de markering \"perfect gesynchroniseerd\" niet. Open de beoordeling opnieuw om dit alsnog te markeren."
     },
     "autoCorrect": {
       "accept": "Accepteer suggestie",

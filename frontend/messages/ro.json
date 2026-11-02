@@ -1470,7 +1470,8 @@
     },
     "toasts": {
       "customLyricsSaved": "Versurile personalizate au fost aplicate. Sincronizează manual fiecare segment editat pentru a te asigura că temporizarea cuvintelor este corectă pentru versurile personalizate.",
-      "untimedWordsBlockSubmit": "{count, plural, one {# cuvânt din versuri nu are} few {# cuvinte din versuri nu au} other {# de cuvinte din versuri nu au}} încă sincronizare. Deschide sincronizatorul și apasă pe fiecare vers pe ritm înainte de a genera videoclipul."
+      "untimedWordsBlockSubmit": "{count, plural, one {# cuvânt din versuri nu are} few {# cuvinte din versuri nu au} other {# de cuvinte din versuri nu au}} încă sincronizare. Deschide sincronizatorul și apasă pe fiecare vers pe ritm înainte de a genera videoclipul.",
+      "syncReferenceSaveFailed": "Verificarea ta a fost salvată, dar marcajul „perfect sincronizat” nu. Redeschide verificarea pentru a marca din nou piesa."
     },
     "autoCorrect": {
       "accept": "Acceptă sugestia",

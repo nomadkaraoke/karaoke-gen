@@ -1182,6 +1182,7 @@ export default function LyricsAnalyzer({
           await apiClient.setSyncReference(opts.syncReference.verified, opts.syncReference.notes)
         } catch (error) {
           console.error('Failed to save sync reference mark:', error)
+          toast.error(t('toasts.syncReferenceSaveFailed'))
         }
       }
 

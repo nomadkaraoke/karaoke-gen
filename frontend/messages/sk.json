@@ -1470,7 +1470,8 @@
     },
     "toasts": {
       "customLyricsSaved": "Vlastný text bol aplikovaný. Manuálne synchronizuj každý upravený segment, aby sa zabezpečilo správne načasovanie slov pre prispôsobený text.",
-      "untimedWordsBlockSubmit": "{count, plural, one {# slovo textu ešte nemá} few {# slová textu ešte nemajú} other {# slov textu ešte nemá}} časovanie. Otvor synchronizátor a pred vygenerovaním videa vyťukaj každý riadok do rytmu."
+      "untimedWordsBlockSubmit": "{count, plural, one {# slovo textu ešte nemá} few {# slová textu ešte nemajú} other {# slov textu ešte nemá}} časovanie. Otvor synchronizátor a pred vygenerovaním videa vyťukaj každý riadok do rytmu.",
+      "syncReferenceSaveFailed": "Tvoja kontrola bola uložená, ale označenie „dokonale zosynchronizované“ nie. Znova otvor kontrolu a označ to ešte raz."
     },
     "autoCorrect": {
       "accept": "Prijať návrh",

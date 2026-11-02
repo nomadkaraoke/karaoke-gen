@@ -1470,7 +1470,8 @@
     },
     "toasts": {
       "customLyricsSaved": "Benutzerdefinierter Text angewendet. Synchronisiere jedes bearbeitete Segment manuell, um sicherzustellen, dass das Wort-Timing für den neuen Text stimmt.",
-      "untimedWordsBlockSubmit": "{count, plural, one {# Wort im Text hat} other {# Wörter im Text haben}} noch kein Timing. Öffne die Textsynchronisation und tippe jede Zeile im Takt an, bevor du das Video generierst."
+      "untimedWordsBlockSubmit": "{count, plural, one {# Wort im Text hat} other {# Wörter im Text haben}} noch kein Timing. Öffne die Textsynchronisation und tippe jede Zeile im Takt an, bevor du das Video generierst.",
+      "syncReferenceSaveFailed": "Deine Überprüfung wurde gespeichert, aber die Markierung „perfekt synchronisiert“ nicht. Öffne die Überprüfung erneut, um sie noch einmal zu markieren."
     },
     "autoCorrect": {
       "accept": "Vorschlag akzeptieren",

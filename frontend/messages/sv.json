@@ -1470,7 +1470,8 @@
     },
     "toasts": {
       "customLyricsSaved": "Anpassad låttext tillämpad. Synkronisera varje redigerat segment manuellt för att säkerställa att tajmingen stämmer för den anpassade låttexten.",
-      "untimedWordsBlockSubmit": "{count, plural, one {# ord i låttexten har} other {# ord i låttexten har}} ingen timing än. Öppna synkroniseraren och tryck på varje rad i takt med musiken innan du genererar videon."
+      "untimedWordsBlockSubmit": "{count, plural, one {# ord i låttexten har} other {# ord i låttexten har}} ingen timing än. Öppna synkroniseraren och tryck på varje rad i takt med musiken innan du genererar videon.",
+      "syncReferenceSaveFailed": "Din granskning sparades, men markeringen för \"perfekt synkad\" sparades inte. Öppna granskningen igen för att markera den på nytt."
     },
     "autoCorrect": {
       "accept": "Acceptera förslag",

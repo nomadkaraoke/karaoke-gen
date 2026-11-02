@@ -162,10 +162,13 @@ export default function ReviewChangesModal({
   const savedVerified = !!data.sync_reference?.verified
   const [syncVerified, setSyncVerified] = useState(savedVerified)
   const [syncNotes, setSyncNotes] = useState(data.sync_reference?.notes || '')
+  // Once touched, always send the current state: a mark saved earlier in this
+  // session (then a failed submit) must still be revocable by un-ticking.
+  const [syncTouched, setSyncTouched] = useState(false)
 
   const handleSubmit = () => {
     if (isSubmitting) return
-    if (isAdmin && (syncVerified || savedVerified)) {
+    if (isAdmin && (syncVerified || savedVerified || syncTouched)) {
       onSubmit({ syncReference: { verified: syncVerified, notes: syncNotes.trim() || undefined } })
     } else {
       onSubmit()
@@ -326,7 +329,7 @@ export default function ReviewChangesModal({
                 type="checkbox"
                 className="mt-1"
                 checked={syncVerified}
-                onChange={(e) => setSyncVerified(e.target.checked)}
+                onChange={(e) => { setSyncVerified(e.target.checked); setSyncTouched(true) }}
                 data-testid="sync-reference-checkbox"
               />
               <span>

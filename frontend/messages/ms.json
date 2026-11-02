@@ -1470,7 +1470,8 @@
     },
     "toasts": {
       "customLyricsSaved": "Lirik tersuai digunakan. Segerakkan setiap segmen yang disunting secara manual untuk memastikan pemasaan perkataan adalah tepat untuk lirik tersuai.",
-      "untimedWordsBlockSubmit": "{count, plural, one {# perkataan lirik belum ada pemasaan} other {# perkataan lirik belum ada pemasaan}}. Buka penyegerak dan ketik setiap baris mengikut rentak sebelum menjana video."
+      "untimedWordsBlockSubmit": "{count, plural, one {# perkataan lirik belum ada pemasaan} other {# perkataan lirik belum ada pemasaan}}. Buka penyegerak dan ketik setiap baris mengikut rentak sebelum menjana video.",
+      "syncReferenceSaveFailed": "Semakan anda telah disimpan, tetapi tanda \"segerak sempurna\" tidak berjaya disimpan. Buka semula semakan untuk menandakannya lagi."
     },
     "autoCorrect": {
       "accept": "Terima cadangan",

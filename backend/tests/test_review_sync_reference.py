@@ -19,7 +19,8 @@ def _admin():
 @pytest.fixture
 def jm():
     m = MagicMock()
-    m.get_job.return_value = MagicMock(job_id="j1")
+    m.get_job.return_value = MagicMock(
+        job_id="j1", file_urls={"lyrics": {"corrections_updated": "jobs/j1/lyrics/corrections_updated.json"}})
     return m
 
 
@@ -80,3 +81,12 @@ def test_non_admin_forbidden(jm):
         jm.update_state_data.assert_not_called()
     finally:
         app.dependency_overrides.clear(); app.dependency_overrides.update(saved)
+
+
+def test_verified_requires_saved_review(client, jm):
+    jm.get_job.return_value = MagicMock(job_id="j1", file_urls={"lyrics": {}})
+    r = client.post("/api/review/j1/sync-reference", json={"verified": True})
+    assert r.status_code == 409
+    jm.update_state_data.assert_not_called()
+    # revoking is always allowed
+    assert client.post("/api/review/j1/sync-reference", json={"verified": False}).status_code == 200

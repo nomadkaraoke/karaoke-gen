@@ -68,4 +68,15 @@ describe('ReviewChangesModal sync-reference mark (admin only)', () => {
     await userEvent.click(screen.getByRole('button', { name: /proceed to instrumental/i }))
     expect(onSubmit).toHaveBeenCalledWith({ syncReference: { verified: false, notes: 'old note' } })
   })
+
+  it('sends verified=false once touched, even with no saved mark', async () => {
+    setRole('admin')
+    const onSubmit = jest.fn()
+    render(<ReviewChangesModal open onClose={jest.fn()} onSubmit={onSubmit} data={data} apiClient={client()} />)
+    const box = screen.getByTestId('sync-reference-checkbox')
+    await userEvent.click(box)
+    await userEvent.click(box)
+    await userEvent.click(screen.getByRole('button', { name: /proceed to instrumental/i }))
+    expect(onSubmit).toHaveBeenCalledWith({ syncReference: { verified: false, notes: undefined } })
+  })
 })
