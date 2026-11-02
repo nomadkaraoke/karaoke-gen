@@ -30,7 +30,6 @@ interface ApiClient {
   getPreviewVideoUrl: (hash: string) => string
   getWaveformData?: (numPoints?: number) => Promise<WaveformDataResult>
   refreshInstrumentalUrls?: () => Promise<InstrumentalOption[]>
-  setSyncReference?: (verified: boolean, notes?: string) => Promise<void>
 }
 
 interface ReviewChangesModalProps {
@@ -43,7 +42,9 @@ interface ReviewChangesModalProps {
   /** Late-stems poll state: `waiting` = audio separation still running, so the
    *  instrumental choice isn't available yet; `gave_up` = it didn't arrive in time. */
   stemsStatus?: LateInstrumentalStatus
-  onSubmit: () => void
+  /** `syncReference` is set only for admins who ticked (or un-ticked a previously
+   *  saved) "perfectly synced" mark; the caller saves it after the timing is saved. */
+  onSubmit: (opts?: { syncReference?: { verified: boolean; notes?: string } }) => void
   isSubmitting?: boolean
   apiClient?: ApiClient | null
   timingOffsetMs?: number
@@ -155,21 +156,20 @@ export default function ReviewChangesModal({
   }
 
   // Admin-only "perfectly synced" mark: verified jobs join the word-timing reference
-  // set used to train and evaluate the aligner. Unticked = unverified (nothing sent).
+  // set used to train and evaluate the aligner. Unticked = unverified. Starts from
+  // the saved mark so a re-review can see and revoke it.
   const isAdmin = useAuth((s) => s.user?.role === 'admin')
-  const [syncVerified, setSyncVerified] = useState(false)
-  const [syncNotes, setSyncNotes] = useState('')
-  const canMarkSync = isAdmin && !!apiClient?.setSyncReference
+  const savedVerified = !!data.sync_reference?.verified
+  const [syncVerified, setSyncVerified] = useState(savedVerified)
+  const [syncNotes, setSyncNotes] = useState(data.sync_reference?.notes || '')
 
   const handleSubmit = () => {
     if (isSubmitting) return
-    if (canMarkSync && syncVerified) {
-      // Best-effort: never block or fail the review on the reference mark.
-      apiClient!.setSyncReference!(true, syncNotes.trim() || undefined).catch((err) =>
-        console.error('Failed to save sync reference mark', err)
-      )
+    if (isAdmin && (syncVerified || savedVerified)) {
+      onSubmit({ syncReference: { verified: syncVerified, notes: syncNotes.trim() || undefined } })
+    } else {
+      onSubmit()
     }
-    onSubmit()
   }
 
   return (
@@ -319,7 +319,7 @@ export default function ReviewChangesModal({
           </div>
         )}
 
-        {canMarkSync && (
+        {isAdmin && (
           <div className="rounded-md border border-dashed p-3 text-sm space-y-2" data-testid="sync-reference">
             <label className="flex items-start gap-2 cursor-pointer">
               <input

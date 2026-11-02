@@ -117,6 +117,7 @@ interface ApiClient {
   getWaveformData?: (numPoints?: number) => Promise<{ amplitudes: number[]; duration_seconds?: number; duration?: number }>
   // Optional: separation-status poll for stems that land after page load (cloud mode).
   getInstrumentalState?: LyricsReviewApiClient['getInstrumentalState']
+  setSyncReference?: LyricsReviewApiClient['setSyncReference']
   completeReview: () => Promise<{ status: string; job_status: string; message: string }>
   // Review session methods (optional - available in cloud mode)
   saveReviewSession?: LyricsReviewApiClient['saveReviewSession']
@@ -1151,7 +1152,9 @@ export default function LyricsAnalyzer({
   }, [saveSession])
 
   // Submit to server (save corrections, don't complete review yet)
-  const handleSubmitToServer = useCallback(async () => {
+  const handleSubmitToServer = useCallback(async (
+    opts?: { syncReference?: { verified: boolean; notes?: string } },
+  ) => {
     if (!apiClient) return
 
     // Block submission of lyrics that still have no timing (e.g. custom lyrics
@@ -1171,6 +1174,16 @@ export default function LyricsAnalyzer({
 
       // 1. Save corrections (not final submission yet), including current duet flag
       await apiClient.submitCorrections(dataToSubmit, isDuet)
+
+      // 1b. Admin "perfectly synced" mark — only now that the timing it vouches for
+      // is saved. Best-effort: never blocks or fails the review.
+      if (opts?.syncReference && apiClient.setSyncReference) {
+        try {
+          await apiClient.setSyncReference(opts.syncReference.verified, opts.syncReference.notes)
+        } catch (error) {
+          console.error('Failed to save sync reference mark:', error)
+        }
+      }
 
       // 2. Save edit log (non-blocking)
       if (editLog.entries.length > 0) {

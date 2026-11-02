@@ -909,6 +909,10 @@ async def get_correction_data(
         # "evidenced" gaps and offers the reference lines for insertion.
         corrections_data['vocal_gaps'] = job.state_data.get('vocal_gaps') or None
 
+        # Admin "perfectly synced" mark (word-timing reference set), so a re-review
+        # shows the existing mark and can revoke it.
+        corrections_data['sync_reference'] = job.state_data.get('sync_reference') or None
+
         # Per-screen skip (C1): tell the frontend whether each review half is
         # confidently auto-resolved, so it can skip the instrumental screen (or the
         # lyrics screen). Derived from the stored auto-approval verdict + the job's

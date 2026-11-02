@@ -189,6 +189,8 @@ export interface CorrectionData {
   // Absent/null when the job wasn't analyzed. Read-only: the review UI derives
   // which gaps are still open from the current segments, never mutates this.
   vocal_gaps?: VocalGapsResult | null
+  // Admin "perfectly synced" mark (word-timing reference set), if one was saved.
+  sync_reference?: { verified: boolean; by?: string; at?: string; notes?: string | null } | null
   // Replay mode (read-only re-open of a completed job via ?replay=true). Present
   // only in replay; carries the reviewer's ordered edit log for narration.
   replay?: {

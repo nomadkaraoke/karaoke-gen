@@ -22,12 +22,7 @@ const data = {
 } as unknown as CorrectionData
 
 function client() {
-  return {
-    generatePreviewVideo: jest.fn(),
-    getPreviewVideoStatus: jest.fn(),
-    getPreviewVideoUrl: jest.fn(),
-    setSyncReference: jest.fn().mockResolvedValue(undefined),
-  }
+  return { generatePreviewVideo: jest.fn(), getPreviewVideoStatus: jest.fn(), getPreviewVideoUrl: jest.fn() }
 }
 
 function setRole(role: string | null) {
@@ -43,39 +38,34 @@ describe('ReviewChangesModal sync-reference mark (admin only)', () => {
     expect(screen.queryByTestId('sync-reference')).not.toBeInTheDocument()
   })
 
-  it('records the mark with notes when an admin ticks it and submits', async () => {
+  it('passes the mark with notes to onSubmit when an admin ticks it', async () => {
     setRole('admin')
-    const api = client()
     const onSubmit = jest.fn()
-    render(<ReviewChangesModal open onClose={jest.fn()} onSubmit={onSubmit} data={data} apiClient={api} />)
+    render(<ReviewChangesModal open onClose={jest.fn()} onSubmit={onSubmit} data={data} apiClient={client()} />)
     await userEvent.click(screen.getByTestId('sync-reference-checkbox'))
     await userEvent.type(screen.getByTestId('sync-reference-notes'), 'spot-checked')
     await userEvent.click(screen.getByRole('button', { name: /proceed to instrumental/i }))
-    expect(api.setSyncReference).toHaveBeenCalledWith(true, 'spot-checked')
-    expect(onSubmit).toHaveBeenCalled()
+    expect(onSubmit).toHaveBeenCalledWith({ syncReference: { verified: true, notes: 'spot-checked' } })
   })
 
-  it('sends nothing when the admin leaves it unticked', async () => {
+  it('sends no mark when the admin leaves it unticked', async () => {
     setRole('admin')
-    const api = client()
     const onSubmit = jest.fn()
-    render(<ReviewChangesModal open onClose={jest.fn()} onSubmit={onSubmit} data={data} apiClient={api} />)
+    render(<ReviewChangesModal open onClose={jest.fn()} onSubmit={onSubmit} data={data} apiClient={client()} />)
     expect(screen.getByTestId('sync-reference')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: /proceed to instrumental/i }))
-    expect(api.setSyncReference).not.toHaveBeenCalled()
-    expect(onSubmit).toHaveBeenCalled()
+    expect(onSubmit).toHaveBeenCalledWith()
   })
 
-  it('still submits the review when saving the mark fails', async () => {
+  it('starts ticked from a saved mark and sends verified=false when revoked', async () => {
     setRole('admin')
-    const api = client()
-    api.setSyncReference.mockRejectedValue(new Error('network'))
     const onSubmit = jest.fn()
-    const err = jest.spyOn(console, 'error').mockImplementation(() => {})
-    render(<ReviewChangesModal open onClose={jest.fn()} onSubmit={onSubmit} data={data} apiClient={api} />)
-    await userEvent.click(screen.getByTestId('sync-reference-checkbox'))
+    const marked = { ...data, sync_reference: { verified: true, notes: 'old note' } } as CorrectionData
+    render(<ReviewChangesModal open onClose={jest.fn()} onSubmit={onSubmit} data={marked} apiClient={client()} />)
+    const box = screen.getByTestId('sync-reference-checkbox') as HTMLInputElement
+    expect(box.checked).toBe(true)
+    await userEvent.click(box)
     await userEvent.click(screen.getByRole('button', { name: /proceed to instrumental/i }))
-    expect(onSubmit).toHaveBeenCalled()
-    err.mockRestore()
+    expect(onSubmit).toHaveBeenCalledWith({ syncReference: { verified: false, notes: 'old note' } })
   })
 })
