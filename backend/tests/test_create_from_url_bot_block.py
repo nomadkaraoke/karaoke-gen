@@ -27,7 +27,7 @@ BOT_WALL = (
 TRANSLATIONS = Path(file_upload.__file__).parents[2] / "translations"
 
 
-async def _create(download):
+async def _create(download, availability=None):
     request = Mock()
     request.headers = {}
     request.client = Mock(host="127.0.0.1")
@@ -35,7 +35,7 @@ async def _create(download):
     request.state.tenant_config = None
 
     service = Mock()
-    service.check_availability = AsyncMock(return_value=None)
+    service.check_availability = availability or AsyncMock(return_value=None)
     service.download = download
 
     auth = AuthResult(
@@ -110,6 +110,46 @@ async def test_other_download_errors_fail_without_retry():
     assert result.status_code == 500
     assert "Video unavailable" in result.detail
     assert job_manager.fail_job.call_args.args[1] == "Download failed: Video unavailable"
+
+
+BLOCKED_CHECK = {"available": False, "is_bot_blocked": True, "error": "not a bot"}
+
+
+@pytest.mark.asyncio
+async def test_bot_blocked_precheck_is_rechecked_and_job_proceeds():
+    """Before any job exists, the same wait gives the cookie re-export time to finish."""
+    availability = AsyncMock(side_effect=[BLOCKED_CHECK, {"available": True}])
+    download = AsyncMock(return_value="uploads/job-1/audio/a.flac")
+    result, job_manager, sleep = await _create(download, availability)
+
+    assert result.job_id == "job-1"
+    assert availability.await_count == 2
+    sleep.assert_awaited_once_with(file_upload.BOT_BLOCK_RETRY_DELAY_SECONDS)
+    job_manager.create_job.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_bot_blocked_precheck_twice_rejects_without_creating_a_job():
+    availability = AsyncMock(return_value=BLOCKED_CHECK)
+    download = AsyncMock()
+    result, job_manager, _ = await _create(download, availability)
+
+    assert availability.await_count == 2
+    assert result.status_code == 400
+    assert "Audio Search" in result.detail
+    job_manager.create_job.assert_not_called()
+    download.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_other_unavailable_precheck_rejects_without_recheck():
+    availability = AsyncMock(return_value={"available": False, "is_private": True})
+    result, _, sleep = await _create(AsyncMock(), availability)
+
+    assert availability.await_count == 1
+    sleep.assert_not_awaited()
+    assert result.status_code == 400
+    assert "private" in result.detail
 
 
 @pytest.mark.parametrize("message,expected", [

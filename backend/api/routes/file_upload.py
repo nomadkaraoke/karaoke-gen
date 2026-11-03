@@ -2055,6 +2055,15 @@ async def create_job_from_url(
             youtube_service = get_youtube_download_service()
             availability = await youtube_service.check_availability(body.url)
 
+            # flacfetch starts a cookie re-export when this check gets bot-blocked,
+            # so give it time and check again before turning the user away.
+            if availability and availability.get("is_bot_blocked"):
+                logger.warning(
+                    f"Availability check bot-blocked, rechecking in {BOT_BLOCK_RETRY_DELAY_SECONDS}s: {body.url}"
+                )
+                await asyncio.sleep(BOT_BLOCK_RETRY_DELAY_SECONDS)
+                availability = await youtube_service.check_availability(body.url)
+
             if availability and not availability.get("available"):
                 error_msg = availability.get("error", "This video is not available")
 
@@ -2069,12 +2078,7 @@ async def create_job_from_url(
                 elif availability.get("is_removed"):
                     detail = "This YouTube video has been removed and cannot be downloaded."
                 elif availability.get("is_bot_blocked"):
-                    detail = (
-                        "We're temporarily unable to access YouTube to download this video — "
-                        "YouTube is asking our server to verify it's not a bot. "
-                        "Please try again in a few minutes, or use Audio Search to find this song "
-                        "from another source."
-                    )
+                    detail = t(locale, "audioSearch.youtubeBotBlocked")
                 elif availability.get("is_age_restricted"):
                     detail = "This YouTube video is age-restricted and cannot be downloaded."
                 else:
