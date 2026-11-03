@@ -723,11 +723,13 @@ jobs:
           restore-keys: |
             venv-backend-hosted-${{ runner.os }}-py3.13-
 
-      - name: Set up Java 21 (required by Firestore emulator)
+      # The emulator package is unpinned (latest from apt), and 592.0.0 is compiled for
+      # Java 25 (class file 69): older runtimes fail with UnsupportedClassVersionError.
+      - name: Set up Java 25 (required by Firestore emulator)
         uses: actions/setup-java@v4
         with:
           distribution: "temurin"
-          java-version: "21"
+          java-version: "25"
 
       - name: Install Firestore emulator
         run: |
@@ -834,11 +836,13 @@ jobs:
           restore-keys: |
             venv-backend-hosted-${{ runner.os }}-py3.13-
 
-      - name: Set up Java 21 (required by Firestore emulator)
+      # The emulator package is unpinned (latest from apt), and 592.0.0 is compiled for
+      # Java 25 (class file 69): older runtimes fail with UnsupportedClassVersionError.
+      - name: Set up Java 25 (required by Firestore emulator)
         uses: actions/setup-java@v4
         with:
           distribution: "temurin"
-          java-version: "21"
+          java-version: "25"
 
       - name: Install Firestore emulator + ffmpeg
         run: |
