@@ -19,6 +19,7 @@ from backend.services.error_monitor.frontend_ingestion import (
     RateLimiter,
     build_pattern_data,
     is_bot_user_agent,
+    is_host_app_injection_error,
     is_opaque_script_error,
     sanitize_url,
 )
@@ -89,6 +90,15 @@ def report_client_error(payload: ClientErrorPayload, request: Request) -> Client
             payload.source,
         )
         return ClientErrorResponse(pattern_id="opaque-script-error-ignored", is_new=False)
+
+    # A script the in-app browser's host app injected (Zalo), not our code.
+    if is_host_app_injection_error(payload.message, payload.user_agent):
+        logger.info(
+            "frontend_crash_ignored_host_app_injection url=%s source=%s",
+            sanitize_url(payload.url),
+            payload.source,
+        )
+        return ClientErrorResponse(pattern_id="host-app-injection-ignored", is_new=False)
 
     report = FrontendErrorReport(
         message=payload.message,

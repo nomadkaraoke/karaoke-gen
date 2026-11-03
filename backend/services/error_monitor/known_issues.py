@@ -15,6 +15,7 @@ Usage:
 
 import re
 from dataclasses import dataclass
+from urllib.parse import urlsplit
 
 
 @dataclass
@@ -129,18 +130,55 @@ _SERVICE_IGNORE_PATTERNS: list[tuple[str, frozenset[str], re.Pattern, str]] = [
         "while instances start, GitHub redelivers and the runners still dispatch "
         "(seen 2026-09-20, 09-23, 09-27, 10-08)",
     ),
+    (
+        "audio_separation_experiment_traceback",
+        frozenset({"audio-separation-job"}),
+        # Two consecutive <string> frames: `python -c` running exec'd code, i.e. an
+        # experiment on a prod job image. A multiprocessing-spawn traceback also
+        # starts with a <string> frame, but its second frame is a real file.
+        re.compile(r'File "<string>", line 1, in <module>\s+File "<string>", line \d+'),
+        "Ad-hoc experiment run on a prod audio-separation-job image, not a job failure "
+        "(seen 2026-10-31, 11-01)",
+    ),
+    (
+        "url_download_failed_duplicate",
+        frozenset({"karaoke-backend"}),
+        # file_upload.py logs this, then fail_job: ops_alerts' job-failed alert is the
+        # one alert for the failure.
+        re.compile(r"^URL download failed: "),
+        "Same failure as the job-failed alert that fail_job sends right after this line",
+    ),
 ]
 
 
-def should_ignore(service: str, message: str) -> IgnoreReason | None:
+# Noise only for one service AND request URL path (Cloud Run request logs carry the
+# URL outside the message). (pattern_name, services, message regex, exact URL path, reason)
+_SERVICE_URL_IGNORE_PATTERNS: list[tuple[str, frozenset[str], re.Pattern, str, str]] = [
+    (
+        "decide_search_health_abort",
+        frozenset({"karaoke-decide-search"}),
+        re.compile(
+            r"request was aborted after waiting too long for an available instance",
+            re.IGNORECASE,
+        ),
+        "/api/search/health",
+        "The keep-warm ping waiting on a min-0 cold start (seen 2026-10-30). The same "
+        "abort on a real search path drops a user's request and still alerts.",
+    ),
+]
+
+
+def should_ignore(service: str, message: str, request_url: str | None = None) -> IgnoreReason | None:
     """Check whether a log entry matches a known infrastructure noise pattern.
 
     ``_IGNORE_PATTERNS`` match on the message alone; ``_SERVICE_IGNORE_PATTERNS``
-    also require ``service`` to be one of the listed services.
+    also require ``service`` to be one of the listed services, and
+    ``_SERVICE_URL_IGNORE_PATTERNS`` also require ``request_url``'s path.
 
     Args:
         service: The originating service name (e.g. ``"karaoke-backend"``).
         message: The raw log message string to evaluate.
+        request_url: The entry's request URL, if it is a request log.
 
     Returns:
         An :class:`IgnoreReason` if the message matches a known noise pattern,
@@ -156,5 +194,11 @@ def should_ignore(service: str, message: str) -> IgnoreReason | None:
     for pattern_name, services, pattern, reason in _SERVICE_IGNORE_PATTERNS:
         if service in services and pattern.search(message):
             return IgnoreReason(pattern_name=pattern_name, reason=reason)
+
+    if request_url:
+        url_path = urlsplit(request_url).path
+        for pattern_name, services, pattern, path, reason in _SERVICE_URL_IGNORE_PATTERNS:
+            if service in services and url_path == path and pattern.search(message):
+                return IgnoreReason(pattern_name=pattern_name, reason=reason)
 
     return None

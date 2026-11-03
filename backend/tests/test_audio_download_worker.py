@@ -1086,6 +1086,17 @@ class TestTorrentStallAwaitsUser:
         assert details["keep_trying"] is True
 
     @pytest.mark.asyncio
+    async def test_known_download_failure_logs_warning_not_error(self, caplog):
+        """fail_job's job-failed alert is the one alert for this failure."""
+        import logging
+
+        flacfetch = _mock_flacfetch(FlacfetchServiceError("Download failed: tracker 500"))
+        with caplog.at_level(logging.INFO, logger="backend.workers.audio_download_worker"):
+            await self._run(_red_job(), flacfetch, attempt="0")
+        records = [r for r in caplog.records if "Download failed: Download failed" in r.getMessage()]
+        assert [r.levelno for r in records] == [logging.WARNING]
+
+    @pytest.mark.asyncio
     async def test_non_stall_failure_still_marks_retry_pending(self):
         flacfetch = _mock_flacfetch(FlacfetchServiceError("Download failed: tracker 500"))
 

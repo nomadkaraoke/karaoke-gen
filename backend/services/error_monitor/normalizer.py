@@ -74,6 +74,17 @@ _NORMALIZERS: list[tuple[re.Pattern, str]] = [
         re.compile(r"https?://([A-Za-z0-9.\-]+(:\d+)?)/[^\s]*"),
         r"https://\1",
     ),
+    # 8b. YouTube video IDs: yt-dlp's "[youtube] <id>: <error>" and bare watch links.
+    #     Otherwise the same error on each video is a new pattern and a "first time"
+    #     job-failure signature (ops_alerts._signature uses this normalizer).
+    (
+        re.compile(r"(\[youtube(?::[\w-]+)?\]) [A-Za-z0-9_-]{11}(?=:)"),
+        r"\1 <VIDEO_ID>",
+    ),
+    (
+        re.compile(r"(youtube\.com/watch\?v=|youtu\.be/)[A-Za-z0-9_-]{11}(?![A-Za-z0-9_-])"),
+        r"\1<VIDEO_ID>",
+    ),
     # 9. Job IDs in paths  (/jobs/<alphanumeric>)
     (
         re.compile(r"/jobs/[A-Za-z0-9]+"),

@@ -1346,7 +1346,8 @@ class JobManager:
                 message=error_message
             )
             
-            logger.error(f"Job {job_id} failed: {error_message}")
+            # WARNING: the status write above sends the one job-failed alert (ops_alerts).
+            logger.warning(f"Job {job_id} failed: {error_message}")
 
             # Auto-refund credit on failure
             job = self.get_job(job_id)
@@ -1693,7 +1694,8 @@ class JobManager:
             message=f"Failed: {error_message}",
             **updates
         )
-        logger.error(f"Job {job_id} failed: {error_message}")
+        # WARNING: the status write above sends the one job-failed alert (ops_alerts).
+        logger.warning(f"Job {job_id} failed: {error_message}")
         if not already_notified:
             self._trigger_state_notifications(job_id, JobStatus.FAILED)
 

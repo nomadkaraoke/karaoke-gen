@@ -181,3 +181,67 @@ def test_lifespan_warms_route_contexts_off_loop_before_readiness():
 
     assert seen[0][0] is main_module.app
     assert seen[0][1].startswith("asyncio_"), seen
+
+
+def test_anyio_backend_is_a_lazy_route_import():
+    """starlette/middleware/base.py imports it on the first request: 17.3s on the loop
+    with 18 requests in flight, 2026-10-30."""
+    assert "anyio._backends._asyncio" in main_module._LAZY_ROUTE_IMPORTS
+
+
+def test_warm_request_runs_through_the_whole_middleware_stack_off_loop():
+    from starlette.applications import Starlette
+    from starlette.middleware import Middleware
+    from starlette.middleware.base import BaseHTTPMiddleware
+    from starlette.responses import PlainTextResponse
+    from starlette.routing import Route
+
+    seen = {}
+
+    class Spy(BaseHTTPMiddleware):
+        async def dispatch(self, request, call_next):
+            seen["thread"] = threading.current_thread().name
+            seen["path"] = request.url.path
+            return await call_next(request)
+
+    async def health(_request):
+        return PlainTextResponse("ok")
+
+    app = Starlette(routes=[Route("/api/health", health)], middleware=[Middleware(Spy)])
+    assert app.middleware_stack is None
+
+    worker = threading.Thread(target=main_module._warm_middleware_stack, args=(app,), name="warm-test")
+    worker.start()
+    worker.join(timeout=10)
+
+    assert seen == {"thread": "warm-test", "path": "/api/health"}
+    assert app.middleware_stack is not None
+
+
+def test_warm_request_failure_never_blocks_startup():
+    async def broken_app(scope, receive, send):
+        raise RuntimeError("boom")
+
+    main_module._warm_middleware_stack(broken_app)  # must not raise
+
+
+def test_lifespan_warms_the_middleware_stack_before_readiness():
+    calls = []
+
+    def fake_warm(application):
+        calls.append(application)
+
+    with patch.object(main_module, "_run_background_warmup"), \
+         patch.object(main_module, "_warm_middleware_stack", fake_warm):
+        with TestClient(main_module.app):
+            assert calls == [main_module.app]
+
+
+def test_warm_request_on_the_real_app_returns_healthy_and_skips_the_audit_log(caplog):
+    import logging
+
+    with caplog.at_level(logging.INFO):
+        main_module._warm_middleware_stack(main_module.app)
+    assert main_module.app.middleware_stack is not None
+    assert not [r for r in caplog.records if r.name == "audit"]
+    assert not [r for r in caplog.records if "warm request failed" in r.message.lower()]

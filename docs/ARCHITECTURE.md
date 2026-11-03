@@ -117,7 +117,14 @@ Keeping #alerts readable (one root cause → one message):
   `ended` line is ERROR (≥10s blocked with a request affected), so one freeze is
   one pattern. The `backend/event_loop_stalls` metric keys on that line too.
 - **Known noise** (`known_issues.py`) can be service-scoped, e.g.
-  github-runner-manager's scale-up "no available instance" aborts.
+  github-runner-manager's scale-up "no available instance" aborts, and scoped to a
+  request path too (decide-search's `/api/search/health` aborts).
+- **Unhandled exceptions**: `Exception in ASGI application` and `request_audit_error`
+  become one `Unhandled exception: <Type: message>` pattern per cause, read from the
+  entry's `exception` field; the path goes in the sample only.
+- **One alert per job failure**: `ops_alerts` sends it from the status write, so
+  `Job <id> failed` and the download-failure lines before it are not ERROR patterns.
+  YouTube video ids are normalized out of signatures.
 
 Frontend crashes are captured via `window.onerror`, `unhandledrejection`, Next.js
 `error.tsx`, and a `CrashReportBoundary` around the review UIs. They POST to

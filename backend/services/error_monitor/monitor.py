@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -115,6 +116,39 @@ def _build_log_filter(
     )
 
 
+#: Fixed messages uvicorn and the audit middleware log for every unhandled exception.
+#: The cause is only in the entry's ``exception`` field.
+_UNHANDLED_EXCEPTION_MESSAGES = frozenset({"Exception in ASGI application", "request_audit_error"})
+
+#: The margin of an ExceptionGroup traceback ("  | ", "    | | ", "  + ").
+_TRACEBACK_MARGIN_RE = re.compile(r"^\s*(?:[|+] )+")
+#: Its separators ("  +-+---- 1 ----", "    +-------").
+_TRACEBACK_SEPARATOR_RE = re.compile(r"^\s*(?:\| )*\+[-+]")
+_TRACEBACK_FRAME_RE = re.compile(r'^\s*File ".*", line \d+')
+
+
+def _exception_summary(exception_text: str) -> str | None:
+    """The ``Type: message`` line a traceback ends on, without its group margin.
+
+    Looks after the last frame, not at the last line: a multi-line exception message
+    (pydantic's ends in a docs link shared by every failure) would otherwise replace
+    the cause. Frame source and caret lines are indented; the exception line isn't.
+    """
+    lines = [
+        _TRACEBACK_MARGIN_RE.sub("", line)
+        for line in exception_text.splitlines()
+        if line.strip() and not _TRACEBACK_SEPARATOR_RE.match(line)
+    ]
+    if not lines:
+        return None
+    last_frame = max((i for i, line in enumerate(lines) if _TRACEBACK_FRAME_RE.match(line)), default=None)
+    if last_frame is not None:
+        for line in lines[last_frame + 1 :]:
+            if not line[0].isspace():
+                return line
+    return lines[-1].strip()
+
+
 def _extract_message(entry: Any) -> str | None:
     """Extract the log message text from a Cloud Logging entry.
 
@@ -124,6 +158,9 @@ def _extract_message(entry: Any) -> str | None:
     * ``dict`` payload — tries ``"message"``, ``"textPayload"``, ``"error"``,
       ``"msg"`` keys in that order.
     * ``None`` payload — returns ``None``.
+
+    An unhandled-exception message becomes ``Unhandled exception: <cause>``, so
+    each cause is its own pattern and both log lines of one crash share it.
 
     Args:
         entry: A Cloud Logging ``LogEntry`` object.
@@ -140,11 +177,38 @@ def _extract_message(entry: Any) -> str | None:
         for key in ("message", "textPayload", "error", "msg"):
             value = payload.get(key)
             if value:
-                return str(value)
+                text = str(value)
+                if text.strip() in _UNHANDLED_EXCEPTION_MESSAGES:
+                    summary = _exception_summary(str(payload.get("exception") or ""))
+                    if summary:
+                        return f"Unhandled exception: {summary}"
+                return text
         return None
     # Fallback: convert to string representation
     text = str(payload)
     return text if text else None
+
+
+def _extract_sample(entry: Any, message: str) -> str:
+    """The alert's sample: the message, led by the request path when the entry has one.
+
+    The path stays out of the pattern (one cause on many jobs or endpoints is one
+    alert) but the alert needs it to say where to look.
+    """
+    payload = entry.payload
+    path = payload.get("path") if isinstance(payload, dict) else None
+    if not path:
+        return message
+    method = payload.get("method")
+    return f"{method} {path}\n{message}" if method else f"{path}\n{message}"
+
+
+def _extract_request_url(entry: Any) -> str | None:
+    """The request URL on a Cloud Run request-log entry, if any."""
+    http_request = getattr(entry, "http_request", None)
+    if not isinstance(http_request, dict):
+        return None
+    return http_request.get("requestUrl") or None
 
 
 def _extract_service_name(entry: Any, resource_type: str) -> str:
@@ -370,7 +434,7 @@ class ErrorMonitor:
                     if not message:
                         continue
                     service = _extract_service_name(entry, resource_type)
-                    ignore_reason = should_ignore(service, message)
+                    ignore_reason = should_ignore(service, message, _extract_request_url(entry))
                     if ignore_reason:
                         logger.debug(
                             "Ignoring entry from %s (%s): %s",
@@ -387,7 +451,7 @@ class ErrorMonitor:
                             "service": service,
                             "resource_type": _classify_resource_type(resource_type),
                             "normalized": normalized,
-                            "message": message,
+                            "message": _extract_sample(entry, message),
                         }
                     )
             except Exception as exc:  # noqa: BLE001

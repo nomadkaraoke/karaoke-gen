@@ -290,6 +290,24 @@ class TestJobStatusTransitions:
 class TestJobFailure:
     """Test job failure handling."""
     
+    def test_fail_job_logs_warning_not_error(self, job_manager, mock_firestore_service, caplog):
+        """ops_alerts' job-failed alert is the one alert; an ERROR here made a second one."""
+        import logging
+
+        mock_firestore_service.get_job.return_value = None
+        with caplog.at_level(logging.INFO, logger="backend.services.job_manager"):
+            job_manager.fail_job("job-1", "Download failed: boom")
+        records = [r for r in caplog.records if "job-1 failed" in r.getMessage()]
+        assert [r.levelno for r in records] == [logging.WARNING]
+
+    def test_mark_job_failed_logs_warning_not_error(self, job_manager, mock_firestore_service, caplog):
+        import logging
+
+        with caplog.at_level(logging.INFO, logger="backend.services.job_manager"):
+            job_manager.mark_job_failed("job-2", "boom")
+        records = [r for r in caplog.records if "job-2 failed" in r.getMessage()]
+        assert [r.levelno for r in records] == [logging.WARNING]
+
     def test_mark_job_as_failed(self, job_manager, mock_firestore_service):
         """Test marking a job as failed."""
         error_message = "Audio separation failed"
