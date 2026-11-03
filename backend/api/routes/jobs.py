@@ -22,7 +22,7 @@ from google.cloud.exceptions import NotFound
 from backend.utils.loop_bridge import run_in_body_thread, run_on_loop
 from backend.utils.request_helpers import get_client_ip
 from backend.services.review_state import ensure_in_review
-from backend.models.job import Job, JobCreate, JobResponse, JobStatus, STATE_TRANSITIONS
+from backend.models.job import Job, JobCreate, JobResponse, JobStatus
 from backend.models.requests import (
     URLSubmissionRequest,
     CorrectionsSubmission,
@@ -1113,12 +1113,6 @@ def start_review(
     # Check ownership
     if not _check_job_ownership(job, auth_result):
         raise HTTPException(status_code=403, detail=t(locale, "jobs.noPermissionAccess"))
-
-    # The review is over (auto-approved, submitted, finished): an expected answer
-    # for a stale link or notification, not a server error. Clients go to the job.
-    if job.status != JobStatus.IN_REVIEW and JobStatus.IN_REVIEW not in STATE_TRANSITIONS.get(job.status, []):
-        logger.info(f"Job {job_id}: start-review refused, status is {job.status}")
-        raise HTTPException(status_code=409, detail=t(locale, "jobs.reviewCannotStart"))
 
     # Idempotent: concurrent/duplicate opens (React double-mount, double-tap, two
     # tabs) must not fail with "in_review -> in_review". Already in review == success,
