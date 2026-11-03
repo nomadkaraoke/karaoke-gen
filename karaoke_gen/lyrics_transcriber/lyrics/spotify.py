@@ -110,6 +110,13 @@ class SpotifyProvider(BaseLyricsProvider):
             
             self.logger.debug(f"Making RapidAPI lyrics request for track ID {track_id}")
             lyrics_response = requests.get(lyrics_url, headers=headers, params=lyrics_params, timeout=10)
+            if lyrics_response.status_code == 403:
+                # The search just succeeded with the same key, so the key is fine: a 401/403
+                # on /search stays the dead-key ERROR. Other providers fill in.
+                self.logger.warning(
+                    f"Spotify RapidAPI lyrics step returned 403 for track {track_id}: {lyrics_response.text[:200]}"
+                )
+                return None
             lyrics_response.raise_for_status()
             
             lyrics_data = lyrics_response.json()

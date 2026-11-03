@@ -32,6 +32,7 @@ from google.cloud.firestore_v1.field_path import FieldPath
 from backend.models.job import JobStatus
 from backend.models.review_session import ReviewSession, ReviewSessionSummary
 from backend.services.job_manager import JobManager
+from backend.exceptions import InvalidStateTransitionError
 from backend.services.review_state import ensure_in_review
 from backend.services.firestore_service import FirestoreService
 from backend.services.storage_service import StorageService
@@ -932,13 +933,23 @@ async def get_correction_data(
         if not replay and job.status == JobStatus.AWAITING_REVIEW:
             # Idempotent: iOS/in-app browsers fire two concurrent loads; the loser
             # must not 500 on "in_review -> in_review" nor repeat one-time side effects.
-            started = "started" == await asyncio.to_thread(
-                ensure_in_review,
-                job_manager,
-                job_id,
-                job.status,
-                "User opened combined review interface",
-            )
+            try:
+                started = "started" == await asyncio.to_thread(
+                    ensure_in_review,
+                    job_manager,
+                    job_id,
+                    job.status,
+                    "User opened combined review interface",
+                )
+            except InvalidStateTransitionError:
+                # Lost the race: the auto-approver moved the job on after the status
+                # gate above. Not a load failure, so 409 rather than the 500 below.
+                current = await asyncio.to_thread(job_manager.get_job, job_id)
+                status = current.status if current else job.status
+                raise HTTPException(
+                    status_code=409,
+                    detail=t("en", "review.reviewNotReady", status=getattr(status, "value", status)),
+                )
             if started:
                 # Set by require_review_auth (absent for review-token links).
                 auth_state = getattr(request, "state", None)
@@ -978,6 +989,8 @@ async def get_correction_data(
         logger.info(f"Job {job_id}: Serving correction data (replay={replay}) for combined review")
         return corrections_data
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Job {job_id}: Error loading corrections: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=t("en", "review.correctionsLoadFailed", error=str(e)))

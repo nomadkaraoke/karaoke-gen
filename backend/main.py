@@ -9,6 +9,7 @@ import logging
 import threading
 import time
 from contextlib import asynccontextmanager
+from typing import Any
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -95,6 +96,9 @@ _LAZY_ROUTE_IMPORTS = (
     "flacfetch.core.manager",
     "flacfetch.downloaders.youtube",
     "yt_dlp",
+    # starlette/middleware/base.py picks the anyio backend on the first request:
+    # 17.3s on the loop with 18 requests in flight (2026-10-30).
+    "anyio._backends._asyncio",
 )
 
 
@@ -135,6 +139,29 @@ def _warm_route_contexts(application: FastAPI) -> int:
         if callable(low_priority):
             count += len(low_priority())
     return count
+
+
+def _warm_middleware_stack(application: Any) -> None:
+    """Send one request through the app, so the first user's request isn't what builds
+    the middleware stack and runs its first-use imports on the loop.
+
+    Blocking: runs its own event loop, so call it from a worker thread. /api/health is
+    exempt from the edge lock, skips the audit log and touches no storage. Best-effort.
+    """
+    import httpx
+
+    async def _request() -> None:
+        transport = httpx.ASGITransport(app=application)
+        async with httpx.AsyncClient(transport=transport, base_url="http://localhost") as client:
+            await client.get("/api/health")
+
+    start = time.time()
+    try:
+        asyncio.run(_request())
+    except Exception as e:  # noqa: BLE001 - warmup must never block startup
+        logger.warning(f"Middleware warm request failed (stack builds on first request): {e}")
+        return
+    logger.info(f"Warmed middleware stack in {time.time() - start:.2f}s")
 
 
 def _warm_route_contexts_safely(application: FastAPI) -> None:
@@ -241,6 +268,16 @@ async def lifespan(app: FastAPI):
     except asyncio.TimeoutError:
         logger.warning(
             f"Route-context warmup exceeded {LAZY_ROUTE_IMPORT_TIMEOUT_S}s; continuing startup"
+        )
+
+    # Same reason, for what only the first request through the middleware touches.
+    try:
+        await asyncio.wait_for(
+            asyncio.to_thread(_warm_middleware_stack, app), timeout=LAZY_ROUTE_IMPORT_TIMEOUT_S
+        )
+    except asyncio.TimeoutError:
+        logger.warning(
+            f"Middleware warmup exceeded {LAZY_ROUTE_IMPORT_TIMEOUT_S}s; continuing startup"
         )
 
     # NLP model / credential warmup runs in the background so it doesn't gate

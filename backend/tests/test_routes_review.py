@@ -1738,6 +1738,35 @@ class TestReplayCorrectionData:
         finally:
             self._teardown()
 
+    def _awaiting_job(self):
+        from backend.models.job import JobStatus
+        job = self._completed_job()
+        job.status = JobStatus.AWAITING_REVIEW
+        job.state_data = {}
+        return job
+
+    def test_auto_approver_race_returns_409_not_500(self):
+        """Job read as awaiting_review, then auto-approved before our transition."""
+        from backend.exceptions import InvalidStateTransitionError
+        from backend.models.job import JobStatus
+
+        client = self._client_with_auth("full")
+        try:
+            with patch("backend.api.routes.review.JobManager") as jm, \
+                 patch("backend.api.routes.review.StorageService") as storage_cls:
+                moved_on = self._awaiting_job()
+                moved_on.status = JobStatus.REVIEW_COMPLETE
+                jm.return_value.get_job.side_effect = [self._awaiting_job(), moved_on, moved_on]
+                jm.return_value.transition_to_state.side_effect = InvalidStateTransitionError(message="nope")
+                storage_cls.return_value.file_exists.return_value = True
+                storage_cls.return_value.download_json.return_value = {"corrected_segments": []}
+                resp = client.get("/api/review/job1/correction-data")
+                assert resp.status_code == 409
+                assert "review_complete" in resp.json()["detail"]
+                jm.return_value.record_review_started.assert_not_called()
+        finally:
+            self._teardown()
+
     def test_replay_requires_full_auth(self):
         client = self._client_with_auth("review_token")
         try:

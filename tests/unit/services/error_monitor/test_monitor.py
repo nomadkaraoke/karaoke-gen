@@ -178,6 +178,243 @@ class TestExtractMessage:
         assert result is None or result == ""
 
 
+# Invented paths/ids; the shapes are copied from real prod entries (2026-11-03).
+_PLAIN_TRACEBACK = (
+    "Traceback (most recent call last):\n"
+    '  File "/app/backend/middleware/audit_logging.py", line 63, in dispatch\n'
+    "    response = await call_next(request)\n"
+    "               ^^^^^^^^^^^^^^^^^^^^^^^^\n"
+    '  File "/app/backend/services/job_manager.py", line 657, in validate_state_transition\n'
+    "    raise InvalidStateTransitionError(\n"
+    "backend.exceptions.InvalidStateTransitionError: Invalid state transition for job 7f89f884: "
+    "complete -> in_review. Valid transitions: ['awaiting_review', 'lyrics_complete']\n"
+)
+_GROUP_TRACEBACK = (
+    "  + Exception Group Traceback (most recent call last):\n"
+    '  |   File "/usr/local/lib/python3.11/site-packages/starlette/_utils.py", line 104, in create_collapsing_task_group\n'
+    "  |     async with anyio.create_task_group() as tg:\n"
+    '  |   File "/usr/local/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 847, in __aexit__\n'
+    "  |     raise BaseExceptionGroup(\n"
+    "  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)\n"
+    "  +-+---------------- 1 ----------------\n"
+    "    | Traceback (most recent call last):\n"
+    '    |   File "/app/backend/services/job_manager.py", line 657, in validate_state_transition\n'
+    "    |     raise InvalidStateTransitionError(\n"
+    "    | backend.exceptions.InvalidStateTransitionError: Invalid state transition for job 7f89f884: "
+    "complete -> in_review. Valid transitions: ['awaiting_review', 'lyrics_complete']\n"
+    "    +------------------------------------\n"
+)
+_EXPECTED_CAUSE = (
+    "Unhandled exception: backend.exceptions.InvalidStateTransitionError: Invalid state transition "
+    "for job 7f89f884: complete -> in_review. Valid transitions: ['awaiting_review', 'lyrics_complete']"
+)
+
+
+class TestUnhandledExceptionMessages:
+    """Every unhandled exception logs one of two fixed messages; the pattern must
+    come from the exception, or all crashes share one (already 'new') pattern and
+    a second, different crash never alerts."""
+
+    def _entry(self, message, exception, **extra):
+        entry = MagicMock()
+        entry.payload = {"message": message, "exception": exception, **extra}
+        return entry
+
+    def test_audit_error_plain_traceback(self):
+        m = _import_monitor_module()
+        entry = self._entry("request_audit_error", _PLAIN_TRACEBACK, path="/api/jobs/x/start-review", method="POST")
+        assert m._extract_message(entry) == _EXPECTED_CAUSE
+
+    def test_asgi_exception_group_traceback_with_pipe_prefixes(self):
+        m = _import_monitor_module()
+        entry = self._entry("Exception in ASGI application\n", _GROUP_TRACEBACK)
+        assert m._extract_message(entry) == _EXPECTED_CAUSE
+
+    def test_nested_exception_group(self):
+        m = _import_monitor_module()
+        nested = (
+            "  + Exception Group Traceback (most recent call last):\n"
+            "  | ExceptionGroup: outer (1 sub-exception)\n"
+            "  +-+---------------- 1 ----------------\n"
+            "    | Exception Group Traceback (most recent call last):\n"
+            "    | ExceptionGroup: inner (1 sub-exception)\n"
+            "    +-+---------------- 1 ----------------\n"
+            "      | Traceback (most recent call last):\n"
+            '      |   File "/app/a.py", line 1, in f\n'
+            "      |     boom()\n"
+            "      | ValueError: the real cause\n"
+            "      +------------------------------------\n"
+            "    +------------------------------------\n"
+        )
+        assert m._extract_message(self._entry("request_audit_error", nested)) == (
+            "Unhandled exception: ValueError: the real cause"
+        )
+
+    def test_multiline_exception_message_uses_its_first_line(self):
+        # pydantic's last traceback line is a docs link, the same for every failure.
+        m = _import_monitor_module()
+        exc = (
+            "Traceback (most recent call last):\n"
+            '  File "/app/a.py", line 1, in f\n'
+            "    boom()\n"
+            "pydantic_core._pydantic_core.ValidationError: 1 validation error for Job\n"
+            "status\n"
+            "  Input should be a valid string\n"
+            "    For further information visit https://errors.pydantic.dev/2/v/string_type\n"
+        )
+        assert m._extract_message(self._entry("request_audit_error", exc)) == (
+            "Unhandled exception: pydantic_core._pydantic_core.ValidationError: 1 validation error for Job"
+        )
+
+    def test_chained_exception_uses_the_final_one(self):
+        m = _import_monitor_module()
+        exc = (
+            "Traceback (most recent call last):\n"
+            '  File "/app/a.py", line 1, in f\n'
+            "    boom()\n"
+            "KeyError: 'first'\n\n"
+            "During handling of the above exception, another exception occurred:\n\n"
+            "Traceback (most recent call last):\n"
+            '  File "/app/b.py", line 2, in g\n'
+            "    bang()\n"
+            "RuntimeError: second\n"
+        )
+        assert m._extract_message(self._entry("request_audit_error", exc)) == (
+            "Unhandled exception: RuntimeError: second"
+        )
+
+    def test_no_exception_field_keeps_the_message(self):
+        m = _import_monitor_module()
+        entry = MagicMock()
+        entry.payload = {"message": "request_audit_error"}
+        assert m._extract_message(entry) == "request_audit_error"
+
+    def test_unparseable_exception_keeps_last_line(self):
+        m = _import_monitor_module()
+        assert m._extract_message(self._entry("request_audit_error", "something odd\nno frames here\n")) == (
+            "Unhandled exception: no frames here"
+        )
+
+    def test_other_messages_with_exception_field_are_untouched(self):
+        m = _import_monitor_module()
+        entry = self._entry("Job 1 could not save", _PLAIN_TRACEBACK)
+        assert m._extract_message(entry) == "Job 1 could not save"
+
+    def test_both_log_lines_of_one_crash_collapse_to_one_pattern(self):
+        from backend.services.error_monitor.normalizer import compute_pattern_hash, normalize_message
+
+        m = _import_monitor_module()
+        audit = m._extract_message(self._entry("request_audit_error", _PLAIN_TRACEBACK))
+        asgi = m._extract_message(self._entry("Exception in ASGI application\n", _GROUP_TRACEBACK))
+        assert compute_pattern_hash("s", normalize_message(audit)) == compute_pattern_hash("s", normalize_message(asgi))
+
+    def test_two_different_crashes_are_two_patterns(self):
+        from backend.services.error_monitor.normalizer import normalize_message
+
+        m = _import_monitor_module()
+        other = _PLAIN_TRACEBACK.replace(
+            "backend.exceptions.InvalidStateTransitionError: Invalid state transition for job 7f89f884: "
+            "complete -> in_review. Valid transitions: ['awaiting_review', 'lyrics_complete']",
+            "ZeroDivisionError: division by zero",
+        )
+        first = m._extract_message(self._entry("request_audit_error", _PLAIN_TRACEBACK))
+        second = m._extract_message(self._entry("request_audit_error", other))
+        assert normalize_message(first) != normalize_message(second)
+
+    def test_sample_keeps_the_path_but_the_pattern_does_not(self):
+        m = _import_monitor_module()
+        entry = self._entry(
+            "request_audit_error", _PLAIN_TRACEBACK, path="/api/jobs/7f89f884/start-review", method="POST"
+        )
+        message = m._extract_message(entry)
+        sample = m._extract_sample(entry, message)
+        assert sample.startswith("POST /api/jobs/7f89f884/start-review\n")
+        assert sample.endswith(_EXPECTED_CAUSE)
+        assert "start-review" not in message
+
+    def test_sample_is_the_message_without_a_path(self):
+        m = _import_monitor_module()
+        entry = self._entry("Exception in ASGI application\n", _GROUP_TRACEBACK)
+        message = m._extract_message(entry)
+        assert m._extract_sample(entry, message) == message
+
+    @patch("backend.services.error_monitor.monitor.get_llm_enabled", return_value=False)
+    @patch("backend.services.error_monitor.monitor.get_digest_mode", return_value=False)
+    def test_cycle_groups_a_crash_into_one_alert_with_the_path_in_its_sample(self, _digest, _llm):
+        from backend.services.error_monitor.firestore_adapter import UpsertResult
+
+        m = _import_monitor_module()
+        audit = _make_entry(
+            payload={
+                "message": "request_audit_error",
+                "exception": _PLAIN_TRACEBACK,
+                "path": "/api/jobs/7f89f884/start-review",
+                "method": "POST",
+            }
+        )
+        asgi = _make_entry(payload={"message": "Exception in ASGI application\n", "exception": _GROUP_TRACEBACK})
+        audit.http_request = asgi.http_request = None
+        monitor = _make_monitor_with_mocks()
+        monitor.logging_client.list_entries.side_effect = [iter([audit, asgi])] + [iter([])] * (
+            len(m.RESOURCE_TYPE_FILTERS) - 1
+        )
+        monitor.firestore_adapter.upsert_pattern.return_value = UpsertResult(pattern_id="p", is_new=True)
+        monitor.firestore_adapter.get_patterns_for_auto_resolve.return_value = []
+        monitor.firestore_adapter.get_active_patterns.return_value = []
+        monitor.firestore_adapter.get_unalerted_new_patterns.return_value = []
+        monitor.discord.send_message.return_value = True
+
+        monitor._run_monitor_cycle()
+
+        assert monitor.firestore_adapter.upsert_pattern.call_count == 1
+        data = monitor.firestore_adapter.upsert_pattern.call_args[0][0]
+        assert data.count == 2
+        assert "/api/jobs/7f89f884/start-review" in data.sample_message
+        assert "start-review" not in data.normalized_message
+        assert "InvalidStateTransitionError" in data.normalized_message
+        assert monitor.discord.send_message.call_count == 1
+
+
+class TestExtractRequestUrl:
+    def test_reads_the_cloud_run_request_url(self):
+        m = _import_monitor_module()
+        entry = MagicMock()
+        entry.http_request = {"requestUrl": "https://x.a.run.app/api/search/health"}
+        assert m._extract_request_url(entry) == "https://x.a.run.app/api/search/health"
+
+    def test_none_without_http_request(self):
+        m = _import_monitor_module()
+        entry = MagicMock()
+        entry.http_request = None
+        assert m._extract_request_url(entry) is None
+
+    @patch("backend.services.error_monitor.monitor.get_llm_enabled", return_value=False)
+    @patch("backend.services.error_monitor.monitor.get_digest_mode", return_value=False)
+    def test_cycle_drops_health_aborts_but_alerts_real_search_paths(self, _digest, _llm):
+        from backend.services.error_monitor.firestore_adapter import UpsertResult
+
+        m = _import_monitor_module()
+        msg = "The request was aborted after waiting too long for an available instance."
+        health = _make_entry(payload=msg, service_name="karaoke-decide-search")
+        health.http_request = {"requestUrl": "https://x.a.run.app/api/search/health"}
+        real = _make_entry(payload=msg, service_name="karaoke-decide-search")
+        real.http_request = {"requestUrl": "https://x.a.run.app/api/search?q=hello"}
+        monitor = _make_monitor_with_mocks()
+        monitor.logging_client.list_entries.side_effect = [iter([health, real])] + [iter([])] * (
+            len(m.RESOURCE_TYPE_FILTERS) - 1
+        )
+        monitor.firestore_adapter.upsert_pattern.return_value = UpsertResult(pattern_id="p", is_new=True)
+        monitor.firestore_adapter.get_patterns_for_auto_resolve.return_value = []
+        monitor.firestore_adapter.get_active_patterns.return_value = []
+        monitor.firestore_adapter.get_unalerted_new_patterns.return_value = []
+        monitor.discord.send_message.return_value = True
+
+        monitor._run_monitor_cycle()
+
+        assert monitor.firestore_adapter.upsert_pattern.call_count == 1
+        assert monitor.firestore_adapter.upsert_pattern.call_args[0][0].count == 1
+
+
 # ---------------------------------------------------------------------------
 # Tests: _extract_service_name
 # ---------------------------------------------------------------------------

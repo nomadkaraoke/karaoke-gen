@@ -1085,6 +1085,14 @@ def get_review_data(
     }
 
 
+def _job_not_in_review_conflict(locale: str, status: Any) -> HTTPException:
+    """409 for a review request on a job that isn't in review."""
+    return HTTPException(
+        status_code=409,
+        detail=t(locale, "jobs.jobNotInReviewState", status=getattr(status, "value", status)),
+    )
+
+
 @router.post("/{job_id}/start-review")
 def start_review(
     job_id: str,
@@ -1109,10 +1117,21 @@ def start_review(
     # Idempotent: concurrent/duplicate opens (React double-mount, double-tap, two
     # tabs) must not fail with "in_review -> in_review". Already in review == success,
     # and the one-time side effects (record_review_started) are not repeated.
+    # A job past review (e.g. a stale "review lyrics" push tapped on a finished song)
+    # is the client's to handle: 409, no transition attempted, nothing logged at ERROR.
+    if job.status not in [JobStatus.AWAITING_REVIEW, JobStatus.IN_REVIEW]:
+        raise _job_not_in_review_conflict(locale, job.status)
+
     was_awaiting = job.status == JobStatus.AWAITING_REVIEW
-    result = ensure_in_review(
-        job_manager, job_id, job.status, "User started reviewing lyrics"
-    )
+    try:
+        result = ensure_in_review(
+            job_manager, job_id, job.status, "User started reviewing lyrics"
+        )
+    except InvalidStateTransitionError:
+        # Lost the race: the auto-approver (or another worker) moved the job on
+        # between our read and the transition.
+        current = job_manager.get_job(job_id)
+        raise _job_not_in_review_conflict(locale, current.status if current else job.status)
     if result == "refused":
         raise HTTPException(status_code=400, detail=t(locale, "jobs.reviewCannotStart"))
     if result == "started" and was_awaiting:

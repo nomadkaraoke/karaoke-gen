@@ -440,12 +440,30 @@ class TestStartReview:
         assert response.json() == {"status": "success", "job_status": "in_review"}
         mock_job_manager.record_review_started.assert_not_called()
 
-    def test_start_review_invalid_transition_otherwise_still_errors(self, client, mock_job_manager, mock_job, auth_headers):
+    def test_start_review_invalid_transition_race_returns_409(self, client, mock_job_manager, mock_job, auth_headers):
+        """The auto-approver moved the job past review between our read and the transition."""
         from backend.exceptions import InvalidStateTransitionError
         mock_job.status = JobStatus.AWAITING_REVIEW
+        moved_on = mock_job.model_copy(update={"status": JobStatus.REVIEW_COMPLETE})
+        mock_job_manager.get_job.side_effect = [mock_job, moved_on, moved_on]
         mock_job_manager.transition_to_state.side_effect = InvalidStateTransitionError(message="nope")
-        with pytest.raises(InvalidStateTransitionError):
-            client.post("/api/jobs/test123/start-review", json={}, headers=auth_headers)
+        response = client.post("/api/jobs/test123/start-review", json={}, headers=auth_headers)
+        assert response.status_code == 409
+        assert "review_complete" in response.json()["detail"]
+        mock_job_manager.record_review_started.assert_not_called()
+
+    @pytest.mark.parametrize("status", [JobStatus.COMPLETE, JobStatus.FAILED, JobStatus.PENDING])
+    def test_start_review_outside_review_returns_409_without_transition(
+        self, client, mock_job_manager, mock_job, auth_headers, status
+    ):
+        """A stale "review lyrics" push on a finished job: no 500, no transition, no ERROR log."""
+        mock_job.status = status
+        response = client.post("/api/jobs/test123/start-review", json={}, headers=auth_headers)
+        assert response.status_code == 409
+        assert status.value in response.json()["detail"]
+        assert "JobStatus." not in response.json()["detail"]
+        mock_job_manager.transition_to_state.assert_not_called()
+        mock_job_manager.record_review_started.assert_not_called()
 
     def test_start_review_from_awaiting_records_once(self, client, mock_job_manager, mock_job, auth_headers):
         mock_job.status = JobStatus.AWAITING_REVIEW

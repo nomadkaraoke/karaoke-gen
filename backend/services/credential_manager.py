@@ -222,7 +222,9 @@ class CredentialManager:
                             message="Dropbox credentials refreshed successfully",
                             last_checked=datetime.utcnow()
                         )
-                
+                else:
+                    logger.error("Dropbox access token rejected and no refresh credentials are stored")
+
                 return CredentialCheckResult(
                     service="dropbox",
                     status=CredentialStatus.INVALID,
@@ -410,7 +412,9 @@ class CredentialManager:
             return True
             
         except Exception as e:
-            logger.error(f"Dropbox API test failed: {e}")
+            # Short-lived tokens expire constantly and the caller refreshes them, so
+            # the probe failing isn't page-worthy; the refresh failing is.
+            logger.warning(f"Dropbox API test failed: {e}")
             return False
     
     def _refresh_dropbox_token(self, creds: dict) -> bool:
@@ -436,7 +440,8 @@ class CredentialManager:
                 # Update in Secret Manager
                 self._update_dropbox_credentials(creds)
                 return True
-            
+
+            logger.error(f"Dropbox token refresh rejected ({response.status_code}): {response.text[:200]}")
             return False
             
         except Exception as e:

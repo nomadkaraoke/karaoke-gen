@@ -142,3 +142,32 @@ def test_strips_sensitive_query_string(client):
     (pd,), _ = client.fake_adapter.upsert_pattern.call_args
     assert "SECRET" not in pd.sample_message
     assert "token=" not in pd.sample_message
+
+
+ZALO_UA = (
+    "Mozilla/5.0 (Linux; Android 16; X Build/Y;) AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Version/4.0 Chrome/156.0.8078.47 Mobile Safari/537.36 Zalo android/261002903 ZaloTheme/light"
+)
+ZALO_MESSAGE = "ReferenceError: zaloJSV2 is not defined"
+
+
+def test_zalo_host_app_injection_is_accepted_but_not_persisted(client):
+    resp = client.post(
+        "/api/client-errors",
+        json=_payload(message=ZALO_MESSAGE, stack=f"{ZALO_MESSAGE}\n    at <anonymous>:1:2", user_agent=ZALO_UA),
+    )
+    assert resp.status_code == 202
+    assert resp.json()["is_new"] is False
+    client.fake_adapter.upsert_pattern.assert_not_called()
+
+
+def test_real_errors_inside_zalo_are_persisted(client):
+    resp = client.post("/api/client-errors", json=_payload(user_agent=ZALO_UA))
+    assert resp.status_code == 202
+    client.fake_adapter.upsert_pattern.assert_called_once()
+
+
+def test_zalo_message_from_another_browser_is_persisted(client):
+    resp = client.post("/api/client-errors", json=_payload(message=ZALO_MESSAGE))
+    assert resp.status_code == 202
+    client.fake_adapter.upsert_pattern.assert_called_once()

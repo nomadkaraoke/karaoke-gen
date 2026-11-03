@@ -1,6 +1,7 @@
 """
 Tests for credential manager and auth endpoints.
 """
+import logging
 import pytest
 import json
 from unittest.mock import MagicMock, patch
@@ -194,6 +195,65 @@ class TestCredentialManager:
             
             assert result is False
     
+    def test_expired_dropbox_token_probe_logs_warning_not_error(self, caplog):
+        """Short-lived tokens expire constantly and get refreshed; that isn't page-worthy."""
+        manager = CredentialManager()
+        with patch('dropbox.Dropbox', side_effect=Exception("expired_access_token")):
+            with caplog.at_level(logging.INFO, logger="backend.services.credential_manager"):
+                assert manager._test_dropbox_api({"access_token": "test"}) is False
+        levels = [r.levelno for r in caplog.records if "Dropbox" in r.message]
+        assert levels == [logging.WARNING]
+
+    def _dropbox_manager(self, creds):
+        manager = CredentialManager()
+        manager.settings = MagicMock()
+        manager.settings.get_secret.return_value = json.dumps(creds)
+        return manager
+
+    FULL_DROPBOX_CREDS = {"access_token": "a", "refresh_token": "r", "app_key": "k", "app_secret": "s"}
+
+    def test_dropbox_refresh_success_logs_no_error(self, caplog):
+        manager = self._dropbox_manager(self.FULL_DROPBOX_CREDS)
+        ok = MagicMock(status_code=200)
+        ok.json.return_value = {"access_token": "new"}
+        with patch('dropbox.Dropbox', side_effect=Exception("expired_access_token")), \
+             patch('requests.post', return_value=ok), \
+             patch.object(manager, "_update_dropbox_credentials", return_value=True):
+            with caplog.at_level(logging.INFO, logger="backend.services.credential_manager"):
+                result = manager.check_dropbox_credentials()
+        assert result.status == CredentialStatus.VALID
+        assert not [r for r in caplog.records if r.levelno >= logging.ERROR]
+
+    def test_dropbox_refresh_rejected_logs_error(self, caplog):
+        manager = self._dropbox_manager(self.FULL_DROPBOX_CREDS)
+        bad = MagicMock(status_code=400, text='{"error": "invalid_grant"}')
+        with patch('dropbox.Dropbox', side_effect=Exception("expired_access_token")), \
+             patch('requests.post', return_value=bad):
+            with caplog.at_level(logging.INFO, logger="backend.services.credential_manager"):
+                result = manager.check_dropbox_credentials()
+        assert result.status == CredentialStatus.INVALID
+        errors = [r.message for r in caplog.records if r.levelno >= logging.ERROR]
+        assert len(errors) == 1
+        assert "400" in errors[0]
+        assert "invalid_grant" in errors[0]
+
+    def test_dropbox_refresh_raising_logs_one_error(self, caplog):
+        manager = self._dropbox_manager(self.FULL_DROPBOX_CREDS)
+        with patch('dropbox.Dropbox', side_effect=Exception("expired_access_token")), \
+             patch('requests.post', side_effect=RuntimeError("network down")):
+            with caplog.at_level(logging.INFO, logger="backend.services.credential_manager"):
+                result = manager.check_dropbox_credentials()
+        assert result.status == CredentialStatus.INVALID
+        assert len([r for r in caplog.records if r.levelno >= logging.ERROR]) == 1
+
+    def test_dropbox_invalid_with_no_refresh_token_logs_error(self, caplog):
+        manager = self._dropbox_manager({"access_token": "a"})
+        with patch('dropbox.Dropbox', side_effect=Exception("expired_access_token")):
+            with caplog.at_level(logging.INFO, logger="backend.services.credential_manager"):
+                result = manager.check_dropbox_credentials()
+        assert result.status == CredentialStatus.INVALID
+        assert len([r for r in caplog.records if r.levelno >= logging.ERROR]) == 1
+
     def test_send_credential_alert_no_webhook(self):
         """Test alert without webhook URL."""
         manager = CredentialManager()

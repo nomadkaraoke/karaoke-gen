@@ -74,6 +74,20 @@ def is_opaque_script_error(message: str | None, source: str | None = None, extra
     return not extra.get("filename") and not extra.get("lineno")
 
 
+# Zalo's in-app browser injects scripts into every page it opens; one references a
+# global it hasn't defined yet. Not our code, and nothing the user sees. Needs both
+# the host app's UA and its global, so a real error inside Zalo still reports.
+_HOST_APP_INJECTION_RE = re.compile(r"\bzaloJSV\d*\b is not defined")
+_ZALO_UA_RE = re.compile(r"\bZalo\b", re.IGNORECASE)
+
+
+def is_host_app_injection_error(message: str | None, user_agent: str | None) -> bool:
+    """True for an error from a script the in-app browser's host app injected."""
+    if not message or not user_agent:
+        return False
+    return bool(_HOST_APP_INJECTION_RE.search(message) and _ZALO_UA_RE.search(user_agent))
+
+
 # A chunk-load failure is a tab running an old build after a deploy: the client
 # auto-reloads (frontend/lib/version-check.ts), so one report is not actionable.
 # Mirrors isChunkLoadError() there. Reports collapse into one pattern per build

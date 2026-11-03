@@ -452,3 +452,46 @@ def test_loop_stall_request_counts_collapse_to_one_pattern():
     b = normalize_message("EVENT_LOOP_STALL ended duration_ms=81183 culprit=x.py:539 in f requests_affected=3")
     assert a == b
     assert "requests_affected=<N>" in a
+
+
+class TestYouTubeVideoIds:
+    """A video id in the text made every bot block a "first time" signature."""
+
+    def _bot_block(self, video_id):
+        return (
+            f"Download failed: ERROR: [youtube] {video_id}: Sign in to confirm you\u2019re not a bot. "
+            "Use --cookies-from-browser or --cookies for the authentication."
+        )
+
+    def test_same_error_on_different_videos_is_one_signature(self):
+        from backend.services.error_monitor.normalizer import normalize_message
+
+        assert normalize_message(self._bot_block("mBJivIsN0n0")) == normalize_message(self._bot_block("a_b-cDeFgHi"))
+
+    def test_id_replaced_with_a_placeholder(self):
+        from backend.services.error_monitor.normalizer import normalize_message
+
+        result = normalize_message(self._bot_block("mBJivIsN0n0"))
+        assert "[youtube] <VIDEO_ID>: Sign in" in result
+        assert "mBJivIsN0n0" not in result
+
+    def test_tab_extractor_variant(self):
+        from backend.services.error_monitor.normalizer import normalize_message
+
+        assert "[youtube:tab] <VIDEO_ID>:" in normalize_message("ERROR: [youtube:tab] mBJivIsN0n0: gone")
+
+    def test_bare_watch_url_id(self):
+        from backend.services.error_monitor.normalizer import normalize_message
+
+        result = normalize_message("Could not fetch youtube.com/watch?v=mBJivIsN0n0 today")
+        assert "mBJivIsN0n0" not in result
+
+    def test_youtube_words_without_an_id_are_kept(self):
+        from backend.services.error_monitor.normalizer import normalize_message
+
+        assert normalize_message("[youtube] Downloading webpage") == "[youtube] Downloading webpage"
+
+    def test_ops_alert_signature_ignores_the_video_id(self):
+        from backend.services.ops_alerts import _signature
+
+        assert _signature(self._bot_block("mBJivIsN0n0")) == _signature(self._bot_block("a_b-cDeFgHi"))

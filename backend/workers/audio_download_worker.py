@@ -399,7 +399,8 @@ async def process_audio_download(job_id: str) -> bool:
         if not isinstance(e, (DownloadError, FlacfetchServiceError)):
             logger.error(f"[job:{job_id}] Download failed: {e}", exc_info=True)
         else:
-            logger.error(f"[job:{job_id}] Download failed: {e}")
+            # Expected failure type; fail_job below sends the one job-failed alert.
+            logger.warning(f"[job:{job_id}] Download failed: {e}")
         _mark_retry_pending_if_attempts_remain(job_manager, job_id)
         job_manager.fail_job(job_id, f"Audio download failed: {e}",
                              error_details={'stage': 'audio_download'})
