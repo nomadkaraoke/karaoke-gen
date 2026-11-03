@@ -93,6 +93,7 @@
     "invalidSelectionIndex": "无效的选择索引 {selection_index}。有效范围：0-{max}",
     "selectionError": "在为任务 {job_id} 选择音频时出错：{error}",
     "youtubeDownloadError": "YouTube 下载失败：{error}",
+    "youtubeBotBlocked": "YouTube 暂时屏蔽了我们的服务器，因此我们无法下载此视频。请使用音频搜索从其他来源查找这首歌，或者几分钟后再试。",
     "torrentDownloadError": "如果没有远程 flacfetch 服务，则无法从 {source} 下载。请配置 FLACFETCH_API_URL。",
     "remoteDownloadNoSearchId": "没有可用于 {source} 下载的 source_id 或 remote_search_id",
     "remoteDownloadCompleteNoPath": "远程下载已完成，但未返回文件路径",

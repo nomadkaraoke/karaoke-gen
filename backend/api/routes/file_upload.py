@@ -45,6 +45,7 @@ from backend.services.tracing import add_span_attribute
 from backend.services.youtube_download_service import (
     get_youtube_download_service,
     YouTubeDownloadError,
+    is_bot_block_error,
 )
 from backend.i18n import t, get_locale_from_request, get_full_locale_from_request
 
@@ -56,6 +57,9 @@ def _is_youtube_url(url: str) -> bool:
     return any(domain in url.lower() for domain in [
         'youtube.com', 'youtu.be', 'youtube-nocookie.com'
     ])
+# Wait before retrying a bot-blocked URL download, so a cookie re-export can finish.
+BOT_BLOCK_RETRY_DELAY_SECONDS = 30
+
 router = APIRouter(tags=["jobs"])
 
 
@@ -1975,6 +1979,25 @@ def validate_job_url(
     return ValidateUrlResponse(supported=True)
 
 
+async def _download_url_with_bot_block_retry(download_service, **download_kwargs) -> str:
+    """Download a URL, retrying once if YouTube bot-blocks flacfetch's session.
+
+    flacfetch already asks its credential keeper for fresh cookies and retries before
+    reporting a bot block. The delay here covers the case where that re-export was
+    still in progress or on cooldown.
+    """
+    try:
+        return await download_service.download(**download_kwargs)
+    except YouTubeDownloadError as e:
+        if not is_bot_block_error(e):
+            raise
+        logger.warning(
+            f"URL download bot-blocked, retrying in {BOT_BLOCK_RETRY_DELAY_SECONDS}s: {e}"
+        )
+    await asyncio.sleep(BOT_BLOCK_RETRY_DELAY_SECONDS)
+    return await download_service.download(**download_kwargs)
+
+
 @router.post("/jobs/create-from-url", response_model=CreateJobFromUrlResponse)
 async def create_job_from_url(
     request: Request,
@@ -2209,7 +2232,8 @@ async def create_job_from_url(
         logger.info(f"Downloading audio from URL via flacfetch: {body.url}")
         try:
             download_service = get_youtube_download_service()
-            audio_gcs_path = await download_service.download(
+            audio_gcs_path = await _download_url_with_bot_block_retry(
+                download_service,
                 url=body.url,
                 job_id=job_id,
                 artist=artist,
@@ -2236,6 +2260,17 @@ async def create_job_from_url(
             )
 
         except YouTubeDownloadError as e:
+            if is_bot_block_error(e):
+                # Our problem, not the user's or the video's: don't show them yt-dlp's
+                # advice about cookies. fail_job raises the alert, so WARNING here.
+                logger.warning(f"URL download still bot-blocked after retry: {e}")
+                detail = t(locale, "audioSearch.youtubeBotBlocked")
+                job_manager.fail_job(
+                    job_id,
+                    detail,
+                    error_details={"code": "youtube_bot_block", "raw_error": str(e)},
+                )
+                raise HTTPException(status_code=500, detail=detail)
             logger.error(f"URL download failed: {e}")
             job_manager.fail_job(job_id, f"Download failed: {e}")
             raise HTTPException(

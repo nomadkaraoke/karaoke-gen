@@ -93,6 +93,7 @@
     "invalidSelectionIndex": "אינדקס בחירה לא חוקי {selection_index}. טווח חוקי: 0-{max}",
     "selectionError": "שגיאה במהלך בחירת האודיו עבור המשימה {job_id}: {error}",
     "youtubeDownloadError": "ההורדה מ-YouTube נכשלה: {error}",
+    "youtubeBotBlocked": "YouTube חוסם זמנית את השרת שלנו, ולכן לא הצלחנו להוריד את הסרטון הזה. אפשר להשתמש בחיפוש אודיו כדי למצוא את השיר הזה ממקור אחר, או לנסות שוב בעוד כמה דקות.",
     "torrentDownloadError": "לא ניתן להוריד מ-{source} ללא שירות flacfetch מרוחק. הגדירו את FLACFETCH_API_URL.",
     "remoteDownloadNoSearchId": "אין source_id או remote_search_id זמינים להורדה מ-{source}",
     "remoteDownloadCompleteNoPath": "ההורדה המרוחקת הושלמה אך לא הוחזר נתיב קובץ",

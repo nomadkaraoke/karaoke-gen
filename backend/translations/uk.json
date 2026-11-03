@@ -93,6 +93,7 @@
     "invalidSelectionIndex": "Недійсний індекс вибору {selection_index}. Допустимий діапазон: 0-{max}",
     "selectionError": "Помилка під час вибору аудіо для завдання {job_id}: {error}",
     "youtubeDownloadError": "Помилка завантаження з YouTube: {error}",
+    "youtubeBotBlocked": "YouTube тимчасово блокує наш сервер, тому нам не вдалося завантажити це відео. Скористайся пошуком аудіо, щоб знайти цю пісню в іншому джерелі, або спробуй ще раз за кілька хвилин.",
     "torrentDownloadError": "Не вдається завантажити з {source} без віддаленого сервісу flacfetch. Налаштуй FLACFETCH_API_URL.",
     "remoteDownloadNoSearchId": "Немає доступного source_id або remote_search_id для завантаження з {source}",
     "remoteDownloadCompleteNoPath": "Віддалене завантаження завершено, але шлях до файлу не повернуто",

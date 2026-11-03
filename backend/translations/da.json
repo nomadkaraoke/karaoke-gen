@@ -93,6 +93,7 @@
     "invalidSelectionIndex": "Ugyldigt valgindeks {selection_index}. Gyldigt område: 0-{max}",
     "selectionError": "Fejl under lydvalg for job {job_id}: {error}",
     "youtubeDownloadError": "YouTube-download mislykkedes: {error}",
+    "youtubeBotBlocked": "YouTube blokerer midlertidigt vores server, så vi kunne ikke downloade denne video. Brug Audio Search til at finde denne sang fra en anden kilde, eller prøv igen om et par minutter.",
     "torrentDownloadError": "Kan ikke downloade fra {source} uden ekstern flacfetch-tjeneste. Konfigurer FLACFETCH_API_URL.",
     "remoteDownloadNoSearchId": "Ingen source_id eller remote_search_id tilgængelig for {source}-download",
     "remoteDownloadCompleteNoPath": "Ekstern download fuldført, men ingen filsti blev returneret",

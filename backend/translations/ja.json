@@ -93,6 +93,7 @@
     "invalidSelectionIndex": "無効な選択インデックス {selection_index} です。有効な範囲: 0-{max}",
     "selectionError": "ジョブ {job_id} のオーディオ選択中にエラーが発生しました: {error}",
     "youtubeDownloadError": "YouTubeのダウンロードに失敗しました: {error}",
+    "youtubeBotBlocked": "YouTubeが一時的に当社のサーバーをブロックしているため、この動画をダウンロードできませんでした。オーディオ検索を使って別のソースからこの曲を探すか、数分後にもう一度お試しください。",
     "torrentDownloadError": "リモートのflacfetchサービスなしで {source} からダウンロードすることはできません。FLACFETCH_API_URLを設定してください。",
     "remoteDownloadNoSearchId": "{source} のダウンロードに利用できる source_id または remote_search_id がありません",
     "remoteDownloadCompleteNoPath": "リモートダウンロードは完了しましたが、ファイルパスが返されませんでした",

@@ -93,6 +93,7 @@
     "invalidSelectionIndex": "ดัชนีการเลือก {selection_index} ไม่ถูกต้อง ช่วงที่ถูกต้อง: 0-{max}",
     "selectionError": "เกิดข้อผิดพลาดระหว่างการเลือกเสียงสำหรับงาน {job_id}: {error}",
     "youtubeDownloadError": "การดาวน์โหลด YouTube ล้มเหลว: {error}",
+    "youtubeBotBlocked": "YouTube กำลังบล็อกเซิร์ฟเวอร์ของเราชั่วคราว เราจึงไม่สามารถดาวน์โหลดวิดีโอนี้ได้ โปรดใช้ Audio Search เพื่อค้นหาเพลงนี้จากแหล่งอื่น หรือลองอีกครั้งในอีกสักครู่",
     "torrentDownloadError": "ไม่สามารถดาวน์โหลดจาก {source} โดยไม่มีบริการ flacfetch ระยะไกล โปรดกำหนดค่า FLACFETCH_API_URL",
     "remoteDownloadNoSearchId": "ไม่มี source_id หรือ remote_search_id สำหรับการดาวน์โหลด {source}",
     "remoteDownloadCompleteNoPath": "การดาวน์โหลดระยะไกลเสร็จสมบูรณ์แต่ไม่ส่งคืนเส้นทางไฟล์",

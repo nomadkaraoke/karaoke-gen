@@ -93,6 +93,7 @@
     "invalidSelectionIndex": "Nevažeći indeks odabira {selection_index}. Važeći raspon: 0-{max}",
     "selectionError": "Pogreška tijekom odabira zvuka za zadatak {job_id}: {error}",
     "youtubeDownloadError": "Preuzimanje s YouTubea nije uspjelo: {error}",
+    "youtubeBotBlocked": "YouTube privremeno blokira naš poslužitelj pa nismo mogli preuzeti ovaj videozapis. Koristi pretraživanje zvuka da pronađeš ovu pjesmu iz drugog izvora ili pokušaj ponovno za nekoliko minuta.",
     "torrentDownloadError": "Nije moguće preuzeti s {source} bez udaljene flacfetch usluge. Konfiguriraj FLACFETCH_API_URL.",
     "remoteDownloadNoSearchId": "Nema dostupnog source_id ili remote_search_id za preuzimanje s {source}",
     "remoteDownloadCompleteNoPath": "Udaljeno preuzimanje je završeno, ali putanja datoteke nije vraćena",

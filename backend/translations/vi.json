@@ -93,6 +93,7 @@
     "invalidSelectionIndex": "Chỉ số lựa chọn không hợp lệ {selection_index}. Phạm vi hợp lệ: 0-{max}",
     "selectionError": "Lỗi trong quá trình chọn âm thanh cho công việc {job_id}: {error}",
     "youtubeDownloadError": "Tải xuống YouTube thất bại: {error}",
+    "youtubeBotBlocked": "YouTube đang tạm thời chặn máy chủ của chúng tôi nên chúng tôi không thể tải video này xuống. Vui lòng sử dụng Tìm kiếm Âm thanh để tìm bài hát này từ nguồn khác hoặc thử lại sau vài phút.",
     "torrentDownloadError": "Không thể tải xuống từ {source} mà không có dịch vụ flacfetch từ xa. Hãy cấu hình FLACFETCH_API_URL.",
     "remoteDownloadNoSearchId": "Không có source_id hoặc remote_search_id nào cho tải xuống {source}",
     "remoteDownloadCompleteNoPath": "Tải xuống từ xa hoàn tất nhưng không trả về đường dẫn tệp",

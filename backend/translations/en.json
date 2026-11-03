@@ -93,6 +93,7 @@
     "invalidSelectionIndex": "Invalid selection index {selection_index}. Valid range: 0-{max}",
     "selectionError": "Error during audio selection for job {job_id}: {error}",
     "youtubeDownloadError": "YouTube download failed: {error}",
+    "youtubeBotBlocked": "YouTube is temporarily blocking our server, so we couldn't download this video. Please use Audio Search to find this song from another source, or try again in a few minutes.",
     "drmUrlUnsupported": "{platform} links are copy-protected, so we can't download them directly. Try downloading the audio with a third-party tool first, then upload the audio file here. You can also paste a YouTube link, or use Audio Search to find this song.",
     "drmUrlUnsupportedWithLink": "{platform} links are copy-protected, so we can't download them directly. You can download the track using a tool like {downloader} and then upload the audio file here. You can also paste a YouTube link, or use Audio Search to find this song.",
     "drmUrlUnsupportedSearch": "{platform} links are copy-protected, so we can't download them directly. Search the web for a \"{platform} downloader\" to get the audio — for example {searchUrl} — then upload the audio file here. You can also paste a YouTube link, or use Audio Search to find this song.",

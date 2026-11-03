@@ -93,6 +93,7 @@
     "invalidSelectionIndex": "Érvénytelen kiválasztási index: {selection_index}. Érvényes tartomány: 0-{max}",
     "selectionError": "Hiba a hang kiválasztása során a(z) {job_id} feladatnál: {error}",
     "youtubeDownloadError": "A YouTube letöltés sikertelen: {error}",
+    "youtubeBotBlocked": "A YouTube ideiglenesen blokkolja a szerverünket, ezért nem tudtuk letölteni ezt a videót. Használd az Audio Search funkciót, hogy más forrásból találd meg a dalt, vagy próbáld újra néhány perc múlva.",
     "torrentDownloadError": "Nem lehet letölteni a(z) {source} forrásból távoli flacfetch szolgáltatás nélkül. Konfiguráld a FLACFETCH_API_URL-t.",
     "remoteDownloadNoSearchId": "Nincs elérhető source_id vagy remote_search_id a(z) {source} letöltéshez",
     "remoteDownloadCompleteNoPath": "A távoli letöltés befejeződött, de nem tért vissza fájlútvonallal",

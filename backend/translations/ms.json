@@ -93,6 +93,7 @@
     "invalidSelectionIndex": "Indeks pilihan tidak sah {selection_index}. Julat sah: 0-{max}",
     "selectionError": "Ralat semasa pemilihan audio untuk tugasan {job_id}: {error}",
     "youtubeDownloadError": "Muat turun YouTube gagal: {error}",
+    "youtubeBotBlocked": "YouTube sedang menyekat pelayan kami buat sementara waktu, jadi kami tidak dapat memuat turun video ini. Sila gunakan Carian Audio untuk mencari lagu ini daripada sumber lain, atau cuba lagi dalam beberapa minit.",
     "torrentDownloadError": "Tidak dapat memuat turun daripada {source} tanpa perkhidmatan flacfetch jauh. Konfigurasikan FLACFETCH_API_URL.",
     "remoteDownloadNoSearchId": "Tiada source_id atau remote_search_id tersedia untuk muat turun {source}",
     "remoteDownloadCompleteNoPath": "Muat turun jauh selesai tetapi tiada laluan fail dikembalikan",

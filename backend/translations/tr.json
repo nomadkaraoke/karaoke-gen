@@ -93,6 +93,7 @@
     "invalidSelectionIndex": "Geçersiz seçim indeksi {selection_index}. Geçerli aralık: 0-{max}",
     "selectionError": "{job_id} işi için ses seçimi sırasında hata: {error}",
     "youtubeDownloadError": "YouTube indirmesi başarısız oldu: {error}",
+    "youtubeBotBlocked": "YouTube sunucumuzu geçici olarak engelliyor, bu yüzden bu videoyu indiremedik. Bu şarkıyı başka bir kaynaktan bulmak için Ses Arama'yı kullan veya birkaç dakika sonra tekrar dene.",
     "torrentDownloadError": "Uzak flacfetch hizmeti olmadan {source} kaynağından indirilemiyor. FLACFETCH_API_URL'yi yapılandır.",
     "remoteDownloadNoSearchId": "{source} indirmesi için source_id veya remote_search_id mevcut değil",
     "remoteDownloadCompleteNoPath": "Uzak indirme tamamlandı ancak dosya yolu döndürülmedi",

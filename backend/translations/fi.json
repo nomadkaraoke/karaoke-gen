@@ -93,6 +93,7 @@
     "invalidSelectionIndex": "Virheellinen valintaindeksi {selection_index}. Sallittu väli: 0-{max}",
     "selectionError": "Virhe äänen valinnassa työlle {job_id}: {error}",
     "youtubeDownloadError": "YouTube-lataus epäonnistui: {error}",
+    "youtubeBotBlocked": "YouTube estää palvelimemme tilapäisesti, joten emme voineet ladata tätä videota. Etsi tämä kappale toisesta lähteestä Äänihaun avulla tai yritä uudelleen muutaman minuutin kuluttua.",
     "torrentDownloadError": "Ei voida ladata lähteestä {source} ilman etä-flacfetch-palvelua. Määritä FLACFETCH_API_URL.",
     "remoteDownloadNoSearchId": "Lähdetunnusta (source_id) tai etähakutunnusta (remote_search_id) ei ole saatavilla {source}-lataukseen",
     "remoteDownloadCompleteNoPath": "Etälataus valmistui, mutta tiedostopolkua ei palautettu",
