@@ -261,7 +261,8 @@ async def maybe_auto_complete_review(job_id: str, trigger: str) -> Dict[str, Any
             payload["hold_for_audio"] = hold_for_audio
             job_manager.update_processing_metadata(job_id, "auto_approval", payload)
             return {"outcome": "review", "overall_auto": verdict.overall_auto,
-                    "blockers": blockers, "hold_for_audio": hold_for_audio}
+                    "blockers": blockers, "hold_for_audio": hold_for_audio,
+                    "ai_suggestions_available": ai_suggestions is not None}
 
         # ---- ENFORCE: complete the review exactly like a human would ----
         # The status gate above used a snapshot read. Re-read now so a human who

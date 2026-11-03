@@ -156,3 +156,80 @@ async def test_review_fallback_crash_restores_hold_for_sweep() -> None:
                             auto_result={"outcome": "review"})
     assert out == "error"
     jm.park_review_for_auto_check.assert_called_once_with("j1")
+
+
+def _suggestion_patches(wait=None):
+    return (
+        patch("backend.workers.auto_correct_worker.process_proactive_auto_correct",
+              wait or AsyncMock()),
+        patch("backend.config.get_settings",
+              return_value=SimpleNamespace(auto_correct_proactive_enabled=True)),
+    )
+
+
+async def _route_without_suggestions(jm, rescored, wait=None):
+    first = {"outcome": "review", "ai_suggestions_available": False}
+    p_wait, p_settings = _suggestion_patches(wait)
+    with p_wait, p_settings:
+        return await _call(review_gate.route_after_scoring, jm, "j1", first, auto_result=rescored)
+
+
+@pytest.mark.asyncio
+async def test_missing_suggestions_rescore_holds_instead_of_notifying() -> None:
+    """Job 7f89f884: the "review your lyrics" push went out minutes before auto-approval."""
+    jm = _jm(_job(audio_complete=False))
+    out, auto, pre = await _route_without_suggestions(
+        jm, {"outcome": "review", "hold_for_audio": True, "ai_suggestions_available": True})
+    assert out == "held"
+    auto.assert_awaited_once_with("j1", trigger="screens_worker")
+    jm.park_review_for_auto_check.assert_called_once_with("j1")
+    jm.transition_to_state.assert_not_called()
+    pre.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_missing_suggestions_rescore_can_auto_complete() -> None:
+    jm = _jm()
+    out, _, pre = await _route_without_suggestions(jm, {"outcome": "auto_completed"})
+    assert out == "auto_completed"
+    jm.transition_to_state.assert_not_called()
+    pre.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_missing_suggestions_rescore_still_review_opens_review() -> None:
+    jm = _jm()
+    out, auto, pre = await _route_without_suggestions(
+        jm, {"outcome": "review", "hold_for_audio": False, "ai_suggestions_available": True})
+    assert out == "review"
+    auto.assert_awaited_once()
+    pre.assert_awaited_once_with("j1")
+    assert jm.transition_to_state.call_args.kwargs["new_status"] == JobStatus.AWAITING_REVIEW
+
+
+@pytest.mark.asyncio
+async def test_suggestions_wait_failure_still_opens_review() -> None:
+    jm = _jm()
+    out, auto, _ = await _route_without_suggestions(
+        jm, {"outcome": "auto_completed"}, wait=AsyncMock(side_effect=RuntimeError("llm down")))
+    assert out == "review"
+    auto.assert_not_awaited()
+    assert jm.transition_to_state.call_args.kwargs["new_status"] == JobStatus.AWAITING_REVIEW
+
+
+@pytest.mark.asyncio
+async def test_rescore_with_no_verdict_keeps_first_verdict() -> None:
+    jm = _jm()
+    out, _, _ = await _route_without_suggestions(jm, {"outcome": "error"})
+    assert out == "review"
+    assert jm.transition_to_state.call_args.kwargs["new_status"] == JobStatus.AWAITING_REVIEW
+
+
+@pytest.mark.asyncio
+async def test_suggestions_present_scores_only_once() -> None:
+    jm = _jm()
+    out, auto, _ = await _call(
+        review_gate.route_after_scoring, jm, "j1",
+        {"outcome": "review", "ai_suggestions_available": True})
+    assert out == "review"
+    auto.assert_not_awaited()
