@@ -426,6 +426,14 @@ class TestStartReview:
         mock_job_manager.transition_to_state.assert_not_called()
         mock_job_manager.record_review_started.assert_not_called()
 
+    @pytest.mark.parametrize("status", [JobStatus.COMPLETE, JobStatus.REVIEW_COMPLETE, JobStatus.ENCODING])
+    def test_start_review_after_review_ended_is_409(self, client, mock_job_manager, mock_job, auth_headers, status):
+        """A stale link or notification gets an expected 409, with no transition attempt (which logs ERROR)."""
+        mock_job.status = status
+        response = client.post("/api/jobs/test123/start-review", json={}, headers=auth_headers)
+        assert response.status_code == 409
+        mock_job_manager.transition_to_state.assert_not_called()
+
     def test_start_review_lost_race_is_success(self, client, mock_job_manager, mock_job, auth_headers):
         """Both requests saw awaiting_review; the loser's transition raises but job is in_review."""
         from backend.exceptions import InvalidStateTransitionError

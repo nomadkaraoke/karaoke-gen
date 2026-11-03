@@ -70,6 +70,9 @@ async def route_after_scoring(
     from backend.services.job_manager import JobManager
 
     job_manager = job_manager or JobManager()
+    auto_result = await _rescore_if_suggestions_were_missing(job_id, auto_result, job_log)
+    if auto_result.get("outcome") in ("auto_completed", "wrong_status"):
+        return str(auto_result["outcome"])
     if not auto_result.get("hold_for_audio"):
         await enter_human_review(job_id, job_log, job_manager)
         return "review"
@@ -89,6 +92,43 @@ async def route_after_scoring(
         logger.info(f"[job:{job_id}] Stems landed while holding review — re-scoring now")
         return await _route_claimed(job_id, job_log, job_manager)
     return "released_elsewhere"
+
+
+async def _rescore_if_suggestions_were_missing(
+    job_id: str, auto_result: Dict[str, Any], job_log: Optional[logging.Logger] = None
+) -> Dict[str, Any]:
+    """Score again if the first pass ran before the AI suggestions landed.
+
+    Lyrics finish moments before the proactive auto-correct, and without its
+    suggestions the lyrics score "needs review". Opening review on that verdict
+    sent the customer a "review your lyrics" push, and the audio worker's re-score
+    then auto-approved the job minutes later (4 of 5 auto-approved jobs,
+    2026-10-20..11-03). Returns the verdict to route on; the original one when
+    suggestions can't be had or the re-score didn't reach a verdict.
+    """
+    if auto_result.get("outcome") != "review" or auto_result.get("ai_suggestions_available") is not False:
+        return auto_result
+
+    from backend.config import get_settings
+    from backend.services.auto_approval.executor import maybe_auto_complete_review
+
+    if not getattr(get_settings(), "auto_correct_proactive_enabled", False):
+        return auto_result
+    try:
+        from backend.workers.auto_correct_worker import process_proactive_auto_correct
+
+        await process_proactive_auto_correct(job_id)  # bounded (180s), joins a run in flight
+    except Exception as e:  # noqa: BLE001  best-effort, like ensure_and_pre_apply
+        logger.warning(f"[job:{job_id}] Waiting for AI suggestions before review failed: {e}")
+        return auto_result
+
+    rescored = await maybe_auto_complete_review(job_id, trigger="screens_worker")
+    outcome = rescored.get("outcome")
+    logger.info(f"[job:{job_id}] Re-scored once AI suggestions were ready: {outcome} "
+                f"(hold_for_audio={rescored.get('hold_for_audio', False)})")
+    if outcome == "auto_completed" and job_log:
+        job_log.info("Auto-approved once AI suggestions were ready: review skipped")
+    return rescored if outcome in ("review", "auto_completed", "wrong_status") else auto_result
 
 
 async def release_audio_hold(job_id: str, reason: str) -> Optional[str]:
