@@ -8,6 +8,13 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from backend.services.flacfetch_client import FlacfetchServiceError
+from backend.services.tornado_client import (
+    TornadoAccountError,
+    TornadoDownload,
+    TornadoError,
+    get_tornado_client,
+    reset_tornado_client,
+)
 from backend.services.youtube_download_service import (
     YouTubeDownloadService,
     YouTubeDownloadError,
@@ -459,3 +466,138 @@ class TestCheckAvailability:
 
         assert result is None
         mock_client.check_youtube.assert_not_called()
+
+
+class TestTornadoRouting:
+    """Tornado first for YouTube, flacfetch as the logged fallback and for everything else."""
+
+    URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+
+    def make_service(self, tornado=True, flacfetch=True):
+        reset_youtube_download_service()
+        service = YouTubeDownloadService()
+        service._tornado_client = MagicMock() if tornado else None
+        if tornado:
+            service._tornado_client.download_audio = AsyncMock(
+                return_value=TornadoDownload("t-1", ".ogg", 5, 9)
+            )
+            service._tornado_client.get_metadata = AsyncMock(return_value={"title": "A Song"})
+        service._flacfetch_client = MagicMock() if flacfetch else None
+        service._download_remote = AsyncMock(return_value="uploads/j/audio/flacfetch.webm")
+        service._download_remote_url = AsyncMock(return_value="uploads/j/audio/generic.mp3")
+        if flacfetch:
+            service._flacfetch_client.check_youtube = AsyncMock(return_value={"available": False, "is_bot_blocked": True})
+        return service
+
+    @pytest.mark.asyncio
+    async def test_tornado_download_goes_to_gcs_named_like_flacfetch(self):
+        service = self.make_service()
+        with patch("backend.services.storage_service.StorageService") as storage:
+            path = await service.download(self.URL, "job1", artist="An Artist", title="A Title")
+        assert path == "uploads/job1/audio/An Artist - A Title.ogg"
+        assert storage.return_value.upload_file.call_args.args[1] == path
+        service._download_remote.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_no_artist_uses_the_video_id_as_filename(self):
+        service = self.make_service()
+        with patch("backend.services.storage_service.StorageService"):
+            path = await service.download(self.URL, "job1")
+        assert path == "uploads/job1/audio/dQw4w9WgXcQ.ogg"
+
+    @pytest.mark.asyncio
+    async def test_a_url_with_a_playlist_only_passes_the_video_id(self):
+        service = self.make_service()
+        with patch("backend.services.storage_service.StorageService"):
+            await service.download(self.URL + "&list=PLabcdefghijk", "job1")
+        assert service._tornado_client.download_audio.call_args.args[0] == "dQw4w9WgXcQ"
+
+    @pytest.mark.asyncio
+    async def test_tornado_failure_falls_back_with_a_warning(self, caplog):
+        service = self.make_service()
+        service._tornado_client.download_audio = AsyncMock(side_effect=TornadoError("ended Failed"))
+        with caplog.at_level("WARNING"):
+            path = await service.download(self.URL, "job1")
+        assert path == "uploads/j/audio/flacfetch.webm"
+        records = [r for r in caplog.records if "falling back to flacfetch" in r.getMessage()]
+        assert [r.levelname for r in records] == ["WARNING"]
+
+    @pytest.mark.asyncio
+    async def test_account_problem_falls_back_with_an_error_that_alerts(self, caplog):
+        service = self.make_service()
+        service._tornado_client.download_audio = AsyncMock(side_effect=TornadoAccountError("HTTP 402"))
+        with caplog.at_level("WARNING"):
+            path = await service.download(self.URL, "job1")
+        assert path == "uploads/j/audio/flacfetch.webm"
+        assert [r.levelname for r in caplog.records if "falling back" in r.getMessage()] == ["ERROR"]
+
+    @pytest.mark.asyncio
+    async def test_unexpected_tornado_exception_still_falls_back(self):
+        service = self.make_service()
+        service._tornado_client.download_audio = AsyncMock(side_effect=AttributeError("surprise"))
+        assert await service.download(self.URL, "job1") == "uploads/j/audio/flacfetch.webm"
+
+    @pytest.mark.asyncio
+    async def test_unexpected_metadata_exception_still_asks_flacfetch(self):
+        service = self.make_service()
+        service._tornado_client.get_metadata = AsyncMock(side_effect=AttributeError("surprise"))
+        assert (await service.check_availability(self.URL))["is_bot_blocked"] is True
+
+    @pytest.mark.asyncio
+    async def test_gcs_failure_falls_back(self):
+        service = self.make_service()
+        with patch("backend.services.storage_service.StorageService") as storage:
+            storage.return_value.upload_file.side_effect = RuntimeError("gcs down")
+            path = await service.download(self.URL, "job1")
+        assert path == "uploads/j/audio/flacfetch.webm"
+
+    @pytest.mark.asyncio
+    async def test_tornado_works_without_flacfetch(self):
+        service = self.make_service(flacfetch=False)
+        with patch("backend.services.storage_service.StorageService"):
+            path = await service.download(self.URL, "job1")
+        assert path.endswith(".ogg")
+
+    @pytest.mark.asyncio
+    async def test_both_failing_raises_a_clear_error_without_flacfetch(self):
+        service = self.make_service(flacfetch=False)
+        service._tornado_client.download_audio = AsyncMock(side_effect=TornadoError("boom"))
+        with pytest.raises(YouTubeDownloadError, match="Tornado download failed: boom"):
+            await service.download(self.URL, "job1")
+
+    @pytest.mark.asyncio
+    async def test_non_youtube_urls_never_go_to_tornado(self):
+        service = self.make_service()
+        path = await service.download("https://soundcloud.com/a/b", "job1")
+        assert path == "uploads/j/audio/generic.mp3"
+        service._tornado_client.download_audio.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_without_tornado_youtube_uses_flacfetch(self):
+        service = self.make_service(tornado=False)
+        assert await service.download(self.URL, "job1") == "uploads/j/audio/flacfetch.webm"
+
+    @pytest.mark.asyncio
+    async def test_availability_passes_on_tornado_metadata_despite_a_bot_blocked_flacfetch(self):
+        service = self.make_service()
+        result = await service.check_availability(self.URL)
+        assert result["available"] is True
+        service._flacfetch_client.check_youtube.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_availability_asks_flacfetch_when_tornado_lookup_fails(self):
+        service = self.make_service()
+        service._tornado_client.get_metadata = AsyncMock(side_effect=TornadoError("unavailable"))
+        result = await service.check_availability(self.URL)
+        assert result["is_bot_blocked"] is True
+
+    def test_settings_switch(self):
+        reset_tornado_client()
+        with patch("backend.services.tornado_client.get_settings") as settings:
+            settings.return_value = MagicMock(tornado_api_key=None, youtube_download_provider="tornado")
+            assert get_tornado_client() is None
+            settings.return_value = MagicMock(tornado_api_key="k", youtube_download_provider="flacfetch")
+            assert get_tornado_client() is None
+            settings.return_value = MagicMock(tornado_api_key="k", youtube_download_provider="tornado")
+            assert get_tornado_client() is not None
+        reset_tornado_client()

@@ -638,7 +638,8 @@ The Video Worker uses an orchestrator pattern to ensure all features work regard
 **Service Modules**:
 | Module | Purpose |
 |--------|---------|
-| `youtube_download_service.py` | YouTube audio downloads (via remote flacfetch) |
+| `youtube_download_service.py` | YouTube audio downloads (TornadoAPI first, then remote flacfetch) |
+| `tornado_client.py` | Client for TornadoAPI (hosted YouTube downloads) |
 | `flacfetch_client.py` | Client for remote flacfetch HTTP API |
 | `audio_search_service.py` | Audio source search (YouTube, RED, OPS, Spotify) |
 | `youtube_upload_service.py` | YouTube OAuth flow and upload |
@@ -704,6 +705,8 @@ Audio can come from file upload or remote search (YouTube, torrents). All YouTub
   2026-09-26; the backend and `audio-download-job` / `bulk-search-job` have no VPC egress, so every
   dependency they call must be reachable on a public address.
 - `FLACFETCH_API_KEY` - API key for authentication
+- `TORNADO_API_KEY` - TornadoAPI key (secret `tornado-api-key`). When set, YouTube downloads and availability checks try Tornado first and fall back to flacfetch: WARNING per failed download, ERROR if the account is rejected. CI wires the secret once it has a version. It covers downloads only, so YouTube search still uses flacfetch's cookies.
+- `YOUTUBE_DOWNLOAD_PROVIDER` - set to `flacfetch` to switch Tornado off, e.g. `gcloud run services update karaoke-backend --update-env-vars YOUTUBE_DOWNLOAD_PROVIDER=flacfetch` (default `tornado`; the next CI deploy resets it, so also change the workflow to make it permanent).
 
 ## Worker Execution
 

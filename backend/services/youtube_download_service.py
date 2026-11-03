@@ -1,25 +1,30 @@
 """
 YouTube download service for cloud backend.
 
-This service provides a single entry point for all YouTube downloads in the cloud.
-flacfetch is the SOLE downloader: downloads are always routed through the remote
-flacfetch service, which has YouTube cookies and avoids bot detection on Cloud Run IPs.
+This service provides a single entry point for all YouTube downloads in the cloud:
 
-The flow is:
-1. Check if remote flacfetch is configured (FLACFETCH_API_URL)
-2. If yes: Use FlacfetchClient.download_by_id() - downloads on VM, uploads to GCS
-3. If no: raise YouTubeDownloadError — there is NO local yt-dlp fallback. We never
-   run yt-dlp inside the Cloud Run container (it's blocked by bot detection and a
-   silent fallback previously masked a real download bug — 2026-06-08 incident).
+1. TornadoAPI first, when configured (TORNADO_API_KEY). It doesn't depend on our cookies.
+2. flacfetch, the remote service with YouTube cookies, if Tornado isn't configured or fails. It is also
+   the only route for non-YouTube URLs.
+3. Otherwise raise YouTubeDownloadError. There is NO local yt-dlp fallback. We never run yt-dlp inside
+   the Cloud Run container (it's blocked by bot detection and a silent fallback previously masked a
+   real download bug — 2026-06-08 incident).
+
+Falling back from Tornado to flacfetch always logs, so it can't hide a Tornado outage: WARNING for one
+failed download, ERROR when the account is rejected and every download would fail.
 
 All entry points (audio search selection, direct URL submission) should use this
 service for YouTube downloads to ensure consistent behavior.
 """
+import asyncio
 import logging
+import os
 import re
+import tempfile
 from typing import Optional
 
 from .flacfetch_client import get_flacfetch_client, FlacfetchServiceError
+from .tornado_client import TornadoAccountError, TornadoError, get_tornado_client
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +66,7 @@ class YouTubeDownloadService:
 
     def __init__(self):
         self._flacfetch_client = get_flacfetch_client()
+        self._tornado_client = get_tornado_client()
 
         if self._flacfetch_client:
             logger.info("YouTubeDownloadService using REMOTE flacfetch")
@@ -71,8 +77,8 @@ class YouTubeDownloadService:
             )
 
     def is_remote_enabled(self) -> bool:
-        """Check if remote flacfetch is configured."""
-        return self._flacfetch_client is not None
+        """Check if a remote download route (flacfetch or Tornado) is configured."""
+        return self._flacfetch_client is not None or self._tornado_client is not None
 
     async def check_availability(self, url: str) -> Optional[dict]:
         """
@@ -86,11 +92,21 @@ class YouTubeDownloadService:
             performed (no remote configured, network error, etc.).
             Callers should treat None as "unknown, proceed anyway".
         """
-        if not self._flacfetch_client:
-            return None
-
         video_id = self._extract_video_id(url)
         if not video_id:
+            return None
+
+        # flacfetch's check uses the same cookies as its downloads, so while they're bot-blocked it
+        # would turn away a video Tornado can fetch. A failed lookup here proves nothing, so ask
+        # flacfetch in that case: it is the one that can say why a video isn't available.
+        if self._tornado_client:
+            try:
+                metadata = await self._tornado_client.get_metadata(video_id)
+                return {"available": True, "video_id": video_id, "title": metadata.get("title")}
+            except Exception as e:
+                logger.info(f"Tornado metadata lookup failed for {video_id}: {type(e).__name__}: {e}")
+
+        if not self._flacfetch_client:
             return None
 
         try:
@@ -127,17 +143,33 @@ class YouTubeDownloadService:
         Raises:
             YouTubeDownloadError: If download fails
         """
-        # flacfetch is the SOLE downloader — never run yt-dlp on Cloud Run.
-        # If it isn't configured, fail loudly rather than silently falling back
-        # to a local download (which is blocked by bot detection on Cloud Run
-        # IPs anyway).
+        video_id = self._extract_video_id(url)
+        tornado_failure = None
+        if video_id and self._tornado_client:
+            try:
+                return await self._download_tornado(video_id, job_id, artist, title)
+            except TornadoAccountError as e:
+                # Needs a person (key or billing), even though the fallback may save this job.
+                logger.error(f"Tornado account problem, falling back to flacfetch: {e}")
+                tornado_failure = e
+            except Exception as e:  # Whatever goes wrong with Tornado must not block flacfetch.
+                logger.warning(
+                    f"Tornado download failed for {video_id}, falling back to flacfetch: "
+                    f"{type(e).__name__}: {e}"
+                )
+                tornado_failure = e
+
+        # Never run yt-dlp on Cloud Run. If flacfetch isn't configured, fail loudly rather
+        # than silently falling back to a local download (which is blocked by bot
+        # detection on Cloud Run IPs anyway).
         if not self._flacfetch_client:
+            if tornado_failure:
+                raise YouTubeDownloadError(f"Tornado download failed: {tornado_failure}") from tornado_failure
             raise YouTubeDownloadError(
                 "Remote flacfetch is not configured (FLACFETCH_API_URL). "
                 "URL downloads require the flacfetch service."
             )
 
-        video_id = self._extract_video_id(url)
         if video_id:
             logger.info(f"URL download (YouTube): video_id={video_id}, job_id={job_id}")
             return await self._download_remote(video_id, job_id, artist, title)
@@ -206,6 +238,35 @@ class YouTubeDownloadService:
                 return match.group(1)
 
         return None
+
+    async def _download_tornado(
+        self,
+        video_id: str,
+        job_id: str,
+        artist: Optional[str] = None,
+        title: Optional[str] = None,
+    ) -> str:
+        """Download through Tornado and upload to GCS. Raises TornadoError on any failure."""
+        from karaoke_gen.utils import sanitize_filename
+
+        from .storage_service import StorageService
+
+        stem = f"{sanitize_filename(artist)} - {sanitize_filename(title)}" if artist and title else video_id
+        with tempfile.TemporaryDirectory(prefix="tornado-") as tmp:
+            local_path = os.path.join(tmp, "audio")
+            download = await self._tornado_client.download_audio(video_id, local_path, submission=job_id)
+            gcs_path = f"uploads/{job_id}/audio/{stem}{download.extension}"
+            try:
+                await asyncio.to_thread(StorageService().upload_file, local_path, gcs_path)
+            except Exception as e:
+                raise TornadoError(f"Could not store the Tornado download: {type(e).__name__}") from e
+
+        logger.info(
+            f"Tornado YouTube download complete: video_id={video_id}, job_id={job_id}, "
+            f"tornado_job={download.tornado_job_id}, file_size={download.file_size}, "
+            f"billable_bytes={download.billable_bytes}, gcs_path={gcs_path}"
+        )
+        return gcs_path
 
     async def _download_remote(
         self,

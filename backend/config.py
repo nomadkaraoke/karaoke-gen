@@ -297,6 +297,11 @@ class Settings(BaseSettings):
     flacfetch_api_url: Optional[str] = os.getenv("FLACFETCH_API_URL")  # e.g., http://10.0.0.5:8080
     flacfetch_api_key: Optional[str] = os.getenv("FLACFETCH_API_KEY")
 
+    # TornadoAPI: tried first for YouTube downloads when the key is set, with flacfetch as fallback.
+    # Set YOUTUBE_DOWNLOAD_PROVIDER=flacfetch to switch it off without a code change.
+    tornado_api_key: Optional[str] = os.getenv("TORNADO_API_KEY")
+    youtube_download_provider: str = os.getenv("YOUTUBE_DOWNLOAD_PROVIDER", "tornado")
+
     # Flacfetch client retry settings
     # Retries help handle transient network failures when calling the flacfetch service
     flacfetch_retry_max_attempts: int = int(os.getenv("FLACFETCH_RETRY_MAX_ATTEMPTS", "9"))  # Total attempts (1 initial + 8 retries)
