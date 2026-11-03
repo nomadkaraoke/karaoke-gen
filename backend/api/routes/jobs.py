@@ -1117,11 +1117,6 @@ def start_review(
     # Idempotent: concurrent/duplicate opens (React double-mount, double-tap, two
     # tabs) must not fail with "in_review -> in_review". Already in review == success,
     # and the one-time side effects (record_review_started) are not repeated.
-    # A job past review (e.g. a stale "review lyrics" push tapped on a finished song)
-    # is the client's to handle: 409, no transition attempted, nothing logged at ERROR.
-    if job.status not in [JobStatus.AWAITING_REVIEW, JobStatus.IN_REVIEW]:
-        raise _job_not_in_review_conflict(locale, job.status)
-
     was_awaiting = job.status == JobStatus.AWAITING_REVIEW
     try:
         result = ensure_in_review(

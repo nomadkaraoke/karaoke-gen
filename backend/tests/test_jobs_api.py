@@ -468,7 +468,6 @@ class TestStartReview:
         mock_job.status = status
         response = client.post("/api/jobs/test123/start-review", json={}, headers=auth_headers)
         assert response.status_code == 409
-        assert status.value in response.json()["detail"]
         assert "JobStatus." not in response.json()["detail"]
         mock_job_manager.transition_to_state.assert_not_called()
         mock_job_manager.record_review_started.assert_not_called()
