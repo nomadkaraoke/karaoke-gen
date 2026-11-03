@@ -29,6 +29,16 @@ class YouTubeDownloadError(Exception):
     pass
 
 
+def is_bot_block_error(error: Exception) -> bool:
+    """Whether YouTube rejected flacfetch's session, as opposed to the video failing.
+
+    Matches flacfetch's own check. Loose so rewording doesn't disarm it, and "not a
+    bot" sidesteps yt-dlp's curly apostrophe in "you're".
+    """
+    message = str(error).lower()
+    return "not a bot" in message or "cookies are no longer valid" in message
+
+
 class YouTubeDownloadService:
     """
     Single point of entry for all YouTube downloads in the cloud backend.

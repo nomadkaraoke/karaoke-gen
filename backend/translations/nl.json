@@ -93,6 +93,7 @@
     "invalidSelectionIndex": "Ongeldige selectie-index {selection_index}. Geldig bereik: 0-{max}",
     "selectionError": "Fout tijdens audioselectie voor taak {job_id}: {error}",
     "youtubeDownloadError": "YouTube download mislukt: {error}",
+    "youtubeBotBlocked": "YouTube blokkeert onze server tijdelijk, dus we konden deze video niet downloaden. Gebruik Audio Search om dit nummer via een andere bron te vinden, of probeer het over een paar minuten opnieuw.",
     "torrentDownloadError": "Kan niet downloaden van {source} zonder externe flacfetch-service. Configureer FLACFETCH_API_URL.",
     "remoteDownloadNoSearchId": "Geen source_id of remote_search_id beschikbaar voor {source} download",
     "remoteDownloadCompleteNoPath": "Externe download voltooid maar geen bestandspad geretourneerd",

@@ -93,6 +93,7 @@
     "invalidSelectionIndex": "अमान्य सिलेक्शन इंडेक्स {selection_index}। मान्य रेंज: 0-{max}",
     "selectionError": "जॉब {job_id} के लिए ऑडियो सिलेक्शन के दौरान त्रुटि: {error}",
     "youtubeDownloadError": "YouTube डाउनलोड विफल: {error}",
+    "youtubeBotBlocked": "YouTube अस्थायी रूप से हमारे सर्वर को ब्लॉक कर रहा है, इसलिए हम यह वीडियो डाउनलोड नहीं कर सके। कृपया इस गाने को किसी अन्य स्रोत से खोजने के लिए Audio Search का उपयोग करो, या कुछ मिनट बाद फिर से कोशिश करो।",
     "torrentDownloadError": "रिमोट flacfetch सर्विस के बिना {source} से डाउनलोड नहीं किया जा सकता। FLACFETCH_API_URL कॉन्फ़िगर करो।",
     "remoteDownloadNoSearchId": "{source} डाउनलोड के लिए कोई source_id या remote_search_id उपलब्ध नहीं है",
     "remoteDownloadCompleteNoPath": "रिमोट डाउनलोड पूरा हुआ लेकिन कोई फ़ाइल पाथ नहीं मिला",

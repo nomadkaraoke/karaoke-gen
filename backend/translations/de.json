@@ -93,6 +93,7 @@
     "invalidSelectionIndex": "Ungültiger Auswahlindex {selection_index}. Gültiger Bereich: 0-{max}",
     "selectionError": "Fehler bei der Audioauswahl für Auftrag {job_id}: {error}",
     "youtubeDownloadError": "YouTube-Download fehlgeschlagen: {error}",
+    "youtubeBotBlocked": "YouTube blockiert unseren Server vorübergehend, daher konnten wir dieses Video nicht herunterladen. Bitte verwende die Audiosuche, um diesen Song aus einer anderen Quelle zu finden, oder versuche es in ein paar Minuten noch einmal.",
     "torrentDownloadError": "Download von {source} ohne Remote-flacfetch-Dienst nicht möglich. Konfiguriere FLACFETCH_API_URL.",
     "remoteDownloadNoSearchId": "Keine source_id oder remote_search_id für den {source}-Download verfügbar",
     "remoteDownloadCompleteNoPath": "Remote-Download abgeschlossen, aber kein Dateipfad zurückgegeben",

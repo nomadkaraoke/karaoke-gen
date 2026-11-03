@@ -93,6 +93,7 @@
     "invalidSelectionIndex": "Índex de selecció no vàlid {selection_index}. Rang vàlid: 0-{max}",
     "selectionError": "Error durant la selecció d'àudio per a la tasca {job_id}: {error}",
     "youtubeDownloadError": "La descàrrega de YouTube ha fallat: {error}",
+    "youtubeBotBlocked": "YouTube està bloquejant temporalment el nostre servidor, així que no hem pogut baixar aquest vídeo. Utilitza la Cerca d'àudio per trobar aquesta cançó en una altra font, o torna-ho a provar d'aquí a uns minuts.",
     "torrentDownloadError": "No es pot descarregar des de {source} sense el servei remot flacfetch. Configura FLACFETCH_API_URL.",
     "remoteDownloadNoSearchId": "No hi ha cap source_id o remote_search_id disponible per a la descàrrega de {source}",
     "remoteDownloadCompleteNoPath": "Descàrrega remota completada però no s'ha retornat cap camí de fitxer",

@@ -93,6 +93,7 @@
     "invalidSelectionIndex": "Index de selecție invalid {selection_index}. Interval valid: 0-{max}",
     "selectionError": "Eroare în timpul selecției audio pentru jobul {job_id}: {error}",
     "youtubeDownloadError": "Descărcarea de pe YouTube a eșuat: {error}",
+    "youtubeBotBlocked": "YouTube ne blochează temporar serverul, așa că nu am putut descărca acest videoclip. Folosește Căutare Audio pentru a găsi această melodie din altă sursă sau încearcă din nou peste câteva minute.",
     "torrentDownloadError": "Nu se poate descărca de pe {source} fără serviciul remote flacfetch. Configurează FLACFETCH_API_URL.",
     "remoteDownloadNoSearchId": "Niciun source_id sau remote_search_id disponibil pentru descărcarea de pe {source}",
     "remoteDownloadCompleteNoPath": "Descărcarea de la distanță s-a finalizat, dar nu a fost returnată nicio cale de fișier",

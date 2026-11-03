@@ -93,6 +93,7 @@
     "invalidSelectionIndex": "Nieprawidłowy indeks wyboru {selection_index}. Prawidłowy zakres: 0-{max}",
     "selectionError": "Błąd podczas wyboru audio dla zadania {job_id}: {error}",
     "youtubeDownloadError": "Pobieranie z YouTube nie powiodło się: {error}",
+    "youtubeBotBlocked": "YouTube tymczasowo blokuje nasz serwer, więc nie udało się pobrać tego filmu. Użyj wyszukiwania audio, aby znaleźć tę piosenkę z innego źródła, lub spróbuj ponownie za kilka minut.",
     "torrentDownloadError": "Nie można pobrać z {source} bez zdalnej usługi flacfetch. Skonfiguruj FLACFETCH_API_URL.",
     "remoteDownloadNoSearchId": "Brak dostępnego source_id lub remote_search_id dla pobierania z {source}",
     "remoteDownloadCompleteNoPath": "Zdalne pobieranie zakończone, ale nie zwrócono ścieżki pliku",

@@ -93,6 +93,7 @@
     "invalidSelectionIndex": "Mali ang selection index na {selection_index}. Valid na range: 0-{max}",
     "selectionError": "Error habang pumipili ng audio para sa job {job_id}: {error}",
     "youtubeDownloadError": "Nabigo ang pag-download sa YouTube: {error}",
+    "youtubeBotBlocked": "Pansamantalang bina-block ng YouTube ang aming server, kaya hindi namin na-download ang video na ito. Gamitin ang Audio Search para hanapin ang kantang ito mula sa ibang source, o subukang muli pagkalipas ng ilang minuto.",
     "torrentDownloadError": "Hindi maka-download mula sa {source} nang walang remote flacfetch service. I-configure ang FLACFETCH_API_URL.",
     "remoteDownloadNoSearchId": "Walang available na source_id o remote_search_id para sa {source} download",
     "remoteDownloadCompleteNoPath": "Nakumpleto ang remote download pero walang ibinalik na file path",

@@ -93,6 +93,7 @@
     "invalidSelectionIndex": "Indeks pilihan tidak valid {selection_index}. Rentang yang valid: 0-{max}",
     "selectionError": "Kesalahan selama pemilihan audio untuk tugas {job_id}: {error}",
     "youtubeDownloadError": "Unduhan YouTube gagal: {error}",
+    "youtubeBotBlocked": "YouTube sedang memblokir server kami untuk sementara, jadi kami tidak dapat mengunduh video ini. Gunakan Pencarian Audio untuk menemukan lagu ini dari sumber lain, atau coba lagi dalam beberapa menit.",
     "torrentDownloadError": "Tidak dapat mengunduh dari {source} tanpa layanan flacfetch jarak jauh. Konfigurasikan FLACFETCH_API_URL.",
     "remoteDownloadNoSearchId": "Tidak ada source_id atau remote_search_id yang tersedia untuk unduhan {source}",
     "remoteDownloadCompleteNoPath": "Unduhan jarak jauh selesai tetapi tidak ada jalur file yang dikembalikan",

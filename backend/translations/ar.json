@@ -93,6 +93,7 @@
     "invalidSelectionIndex": "فهرس تحديد غير صالح {selection_index}. النطاق الصالح: 0-{max}",
     "selectionError": "خطأ أثناء تحديد الصوت للمهمة {job_id}: {error}",
     "youtubeDownloadError": "فشل تنزيل YouTube: {error}",
+    "youtubeBotBlocked": "يحظر YouTube خادمنا مؤقتاً، لذا لم نتمكن من تنزيل هذا الفيديو. يرجى استخدام البحث الصوتي للعثور على هذه الأغنية من مصدر آخر، أو المحاولة مرة أخرى بعد بضع دقائق.",
     "torrentDownloadError": "لا يمكن التنزيل من {source} بدون خدمة flacfetch عن بُعد. قم بإعداد FLACFETCH_API_URL.",
     "remoteDownloadNoSearchId": "لا يتوفر source_id أو remote_search_id لتنزيل {source}",
     "remoteDownloadCompleteNoPath": "اكتمل التنزيل عن بُعد ولكن لم يتم إرجاع مسار الملف",

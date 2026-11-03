@@ -93,6 +93,7 @@
     "invalidSelectionIndex": "Index de sélection invalide {selection_index}. Plage valide : 0-{max}",
     "selectionError": "Erreur lors de la sélection audio pour la tâche {job_id} : {error}",
     "youtubeDownloadError": "Le téléchargement YouTube a échoué : {error}",
+    "youtubeBotBlocked": "YouTube bloque temporairement notre serveur, nous n'avons donc pas pu télécharger cette vidéo. Utilise la Recherche Audio pour trouver cette chanson depuis une autre source, ou réessaie dans quelques minutes.",
     "torrentDownloadError": "Impossible de télécharger depuis {source} sans le service flacfetch distant. Configure FLACFETCH_API_URL.",
     "remoteDownloadNoSearchId": "Aucun source_id ou remote_search_id disponible pour le téléchargement {source}",
     "remoteDownloadCompleteNoPath": "Téléchargement distant terminé mais aucun chemin de fichier retourné",

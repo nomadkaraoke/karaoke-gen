@@ -93,6 +93,7 @@
     "invalidSelectionIndex": "잘못된 선택 인덱스 {selection_index}. 유효 범위: 0-{max}",
     "selectionError": "작업 {job_id}의 오디오 선택 중 오류 발생: {error}",
     "youtubeDownloadError": "YouTube 다운로드 실패: {error}",
+    "youtubeBotBlocked": "YouTube가 일시적으로 저희 서버를 차단하고 있어 이 동영상을 다운로드할 수 없습니다. 오디오 검색을 사용하여 다른 소스에서 이 노래를 찾거나 몇 분 후에 다시 시도해 주세요.",
     "torrentDownloadError": "원격 flacfetch 서비스 없이 {source}에서 다운로드할 수 없습니다. FLACFETCH_API_URL을 구성하세요.",
     "remoteDownloadNoSearchId": "{source} 다운로드에 사용할 수 있는 source_id 또는 remote_search_id가 없습니다",
     "remoteDownloadCompleteNoPath": "원격 다운로드가 완료되었지만 파일 경로가 반환되지 않았습니다",

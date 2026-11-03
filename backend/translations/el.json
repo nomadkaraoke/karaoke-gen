@@ -93,6 +93,7 @@
     "invalidSelectionIndex": "Μη έγκυρο ευρετήριο επιλογής {selection_index}. Έγκυρο εύρος: 0-{max}",
     "selectionError": "Σφάλμα κατά την επιλογή ήχου για την εργασία {job_id}: {error}",
     "youtubeDownloadError": "Η λήψη από το YouTube απέτυχε: {error}",
+    "youtubeBotBlocked": "Το YouTube μπλοκάρει προσωρινά τον διακομιστή μας, οπότε δεν μπορέσαμε να κατεβάσουμε αυτό το βίντεο. Χρησιμοποίησε την Αναζήτηση Ήχου για να βρεις αυτό το τραγούδι από άλλη πηγή, ή δοκίμασε ξανά σε λίγα λεπτά.",
     "torrentDownloadError": "Δεν είναι δυνατή η λήψη από το {source} χωρίς την απομακρυσμένη υπηρεσία flacfetch. Ρύθμισε το FLACFETCH_API_URL.",
     "remoteDownloadNoSearchId": "Δεν υπάρχει διαθέσιμο source_id ή remote_search_id για τη λήψη από το {source}",
     "remoteDownloadCompleteNoPath": "Η απομακρυσμένη λήψη ολοκληρώθηκε αλλά δεν επιστράφηκε διαδρομή αρχείου",

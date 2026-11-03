@@ -93,6 +93,7 @@
     "invalidSelectionIndex": "Ogiltigt urvalsindex {selection_index}. Giltigt intervall: 0-{max}",
     "selectionError": "Fel vid ljudval för jobb {job_id}: {error}",
     "youtubeDownloadError": "YouTube-nedladdning misslyckades: {error}",
+    "youtubeBotBlocked": "YouTube blockerar tillfälligt vår server, så vi kunde inte ladda ner den här videon. Använd Ljudsökning för att hitta den här låten från en annan källa, eller försök igen om några minuter.",
     "torrentDownloadError": "Kan inte ladda ner från {source} utan fjärrtjänsten flacfetch. Konfigurera FLACFETCH_API_URL.",
     "remoteDownloadNoSearchId": "Inget source_id eller remote_search_id tillgängligt för nedladdning från {source}",
     "remoteDownloadCompleteNoPath": "Fjärrnedladdning slutförd men ingen filsökväg returnerades",

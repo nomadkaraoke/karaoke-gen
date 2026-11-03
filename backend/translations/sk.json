@@ -93,6 +93,7 @@
     "invalidSelectionIndex": "Neplatný index výberu {selection_index}. Platný rozsah: 0-{max}",
     "selectionError": "Chyba počas výberu zvuku pre úlohu {job_id}: {error}",
     "youtubeDownloadError": "Sťahovanie z YouTube zlyhalo: {error}",
+    "youtubeBotBlocked": "YouTube dočasne blokuje náš server, takže sa nám toto video nepodarilo stiahnuť. Použi vyhľadávanie zvuku na nájdenie tejto piesne z iného zdroja alebo to skús znova o pár minút.",
     "torrentDownloadError": "Nemožno sťahovať z {source} bez vzdialenej služby flacfetch. Nakonfiguruj FLACFETCH_API_URL.",
     "remoteDownloadNoSearchId": "Pre sťahovanie z {source} nie je k dispozícii žiadne source_id alebo remote_search_id",
     "remoteDownloadCompleteNoPath": "Vzdialené sťahovanie bolo dokončené, ale nebola vrátená žiadna cesta k súboru",
