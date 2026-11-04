@@ -516,6 +516,18 @@ def create_audio_download_job(
                                     ),
                                 ),
                             ),
+                            # TornadoAPI key: YouTube downloads try Tornado first, flacfetch is
+                            # the fallback (backend/services/youtube_download_service.py). This job
+                            # does most YouTube downloads; CI wires the same secret on the API service.
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="TORNADO_API_KEY",
+                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
+                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
+                                        secret=f"projects/{PROJECT_ID}/secrets/tornado-api-key",
+                                        version="latest",
+                                    ),
+                                ),
+                            ),
                             # Flacfetch API URL (public HTTPS endpoint; no VPC egress)
                             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                                 name="FLACFETCH_API_URL",
