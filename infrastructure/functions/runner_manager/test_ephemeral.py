@@ -67,7 +67,6 @@ def _fresh_module(**env):
         return ephemeral
 
 
-
 def _error_messages(out: str) -> list[str]:
     """Messages printed as structured ERROR logs (what the error monitor sees)."""
     msgs = []
