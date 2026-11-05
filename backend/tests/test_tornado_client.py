@@ -1,17 +1,21 @@
 """Tests for TornadoClient. Network is mocked; nothing here submits real work."""
 import json
+import logging
+import shutil
+import subprocess
 
 import httpx
 import pytest
 
 from backend.services.tornado_client import (
+    _demux_audio,
     TornadoAccountError,
     TornadoClient,
     TornadoError,
 )
 
 VIDEO_ID = "dQw4w9WgXcQ"
-DELIVERY_URL = "https://files.tornadoapi.io/videos/abc.opus?verify=signed"
+DELIVERY_URL = "https://files.tornadoapi.io/videos/abc.webm?verify=signed"
 
 
 class FakeTornado:
@@ -64,6 +68,7 @@ def make_client(fake, deadline=30.0):
         poll_interval_seconds=3.0,
         transport=httpx.MockTransport(fake),
         sleep=sleep,
+        demux=lambda source, dest, muxer: shutil.copy(source, dest),
         clock=lambda: now["t"],
     )
 
@@ -75,17 +80,17 @@ async def test_download_writes_file_and_reports_size(tmp_path):
     result = await make_client(fake).download_audio(VIDEO_ID, str(dest), submission="gen-1")
     assert dest.read_bytes() == b"audio"
     assert result.tornado_job_id == "job-1"
-    assert result.extension == ".ogg"
+    assert result.extension == ".webm"
     assert (result.file_size, result.billable_bytes) == (5, 9)
 
 
 @pytest.mark.asyncio
-async def test_requests_the_source_opus_stream_for_the_canonical_url(tmp_path):
+async def test_requests_the_route_that_returns_source_opus_for_the_canonical_url(tmp_path):
     fake = FakeTornado()
     await make_client(fake).download_audio(VIDEO_ID, str(tmp_path / "a"), submission="gen-1")
     body = json.loads(fake.of("POST", "/jobs")[0].content)
-    # audio_codec must stay out: with "copy" Tornado returned 128k AAC instead of the Opus stream.
-    assert body == {"url": f"https://www.youtube.com/watch?v={VIDEO_ID}", "audio_only": True, "format": "opus"}
+    # Not audio_only: that returned 128k AAC or Opus unpredictably (2026-11-05).
+    assert body == {"url": f"https://www.youtube.com/watch?v={VIDEO_ID}", "format": "webm", "max_resolution": "360"}
 
 
 @pytest.mark.asyncio
@@ -288,25 +293,79 @@ async def test_metadata_success_and_failure():
 
 
 @pytest.mark.parametrize(
-    "url,expected",
+    "url,extension,muxer",
     [
-        ("https://files.tornadoapi.io/videos/abc.opus?verify=x", ".ogg"),
-        ("https://files.tornadoapi.io/videos/abc.ogg", ".ogg"),
-        ("https://files.tornadoapi.io/videos/abc", ".ogg"),
-        ("https://files.tornadoapi.io/videos/abc.m4a", ".m4a"),
+        ("https://files.tornadoapi.io/videos/abc.webm?verify=x", ".webm", "webm"),
+        ("https://fsn1.your-objectstorage.com/tornado/videos/abc.opus?X-Amz-Signature=x", ".ogg", "ogg"),
+        ("https://files.tornadoapi.io/videos/abc.mp4", ".m4a", "ipod"),
+        ("https://files.tornadoapi.io/videos/abc.m4a", ".m4a", "ipod"),
+        ("https://files.tornadoapi.io/videos/abc", ".webm", "webm"),
     ],
 )
-def test_extension_comes_from_the_delivery_path(url, expected):
-    assert TornadoClient._extension(url) == expected
+def test_audio_container_comes_from_the_delivery_path(url, extension, muxer):
+    assert TornadoClient._audio_container(url) == (extension, muxer)
 
 
 @pytest.mark.asyncio
-async def test_unwritable_destination_is_a_tornado_error(tmp_path):
-    with pytest.raises(TornadoError, match="Writing"):
-        await make_client(FakeTornado()).download_audio(VIDEO_ID, str(tmp_path / "missing" / "a"), submission="gen-1")
+async def test_source_file_is_removed_after_extraction(tmp_path):
+    await make_client(FakeTornado()).download_audio(VIDEO_ID, str(tmp_path / "a"), submission="gen-1")
+    assert [p.name for p in tmp_path.iterdir()] == ["a"]
 
 
 @pytest.mark.asyncio
-async def test_metadata_that_isnt_an_object_is_a_tornado_error():
+async def test_failed_extraction_fails_the_download_and_keeps_tornados_file(tmp_path):
+    fake = FakeTornado()
+    client = make_client(fake)
+
+    def demux(source, dest, muxer):
+        raise TornadoError("no audio track")
+
+    client._demux = demux
+    with pytest.raises(TornadoError, match="no audio track"):
+        await client.download_audio(VIDEO_ID, str(tmp_path / "a"), submission="gen-1")
+    assert fake.of("DELETE", "/jobs/job-1/file") == []
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.asyncio
+async def test_signed_delivery_urls_stay_out_of_the_logs(tmp_path, caplog):
+    with caplog.at_level(logging.INFO, logger="httpx"):
+        await make_client(FakeTornado()).download_audio(VIDEO_ID, str(tmp_path / "a"), submission="gen-1")
+    assert "HTTP Request" in caplog.text  # other requests still log
+    assert "verify=" not in caplog.text
+
+
+def _packet_md5(path):
+    return subprocess.run(
+        ["ffmpeg", "-v", "error", "-i", str(path), "-map", "0:a", "-c", "copy", "-f", "md5", "-"],
+        capture_output=True, text=True, check=True,
+    ).stdout
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="needs ffmpeg")
+def test_demux_keeps_the_audio_packets_and_drops_the_video(tmp_path):
+    source = tmp_path / "source.mkv"
+    made = subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "sine=duration=1", "-f", "lavfi", "-i",
+         "color=size=64x64:duration=1", "-c:a", "aac", "-c:v", "mpeg4", str(source)],
+        capture_output=True,
+    )
+    if made.returncode:
+        pytest.skip("this ffmpeg can't make the fixture")
+    dest = tmp_path / "audio"
+    _demux_audio(str(source), str(dest), "ipod")
+    streams = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "stream=codec_type", "-of", "csv=p=0", str(dest)],
+        capture_output=True, text=True, check=True,
+    ).stdout.split()
+    assert streams == ["audio"]
+    assert _packet_md5(dest) == _packet_md5(source)
+
+
+def test_demux_failure_is_a_tornado_error_and_leaves_nothing(tmp_path):
+    source = tmp_path / "source"
+    source.write_bytes(b"not media")
+    dest = tmp_path / "audio"
     with pytest.raises(TornadoError):
-        await make_client(FakeTornado(metadata=httpx.Response(200, json=[]))).get_metadata(VIDEO_ID)
+        _demux_audio(str(source), str(dest), "webm")
+    assert not dest.exists()
