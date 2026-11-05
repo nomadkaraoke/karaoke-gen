@@ -8,9 +8,10 @@ Three things that are easy to get wrong:
 
 - Only ever send a canonical ``watch?v=<id>`` URL. A URL carrying a real playlist id downloads and
   bills the whole playlist, returning ``batch_id`` rather than ``job_id``.
-- ``format: "opus"`` without ``audio_codec`` returns the source's Opus stream, packet-identical to what
-  flacfetch delivers (checked 2026-11-03). Adding ``audio_codec: "copy"`` or leaving ``format`` out
-  returns YouTube's 128k AAC instead.
+- Request ``format: "webm", max_resolution: "360"`` and strip the video, because that returns the source's
+  Opus stream, packet-identical to what flacfetch delivers. ``audio_only`` isn't reliable for this: on our
+  plan the same request returned Opus or 128k AAC from one day to the next (checked 2026-11-03/05). It
+  costs no more: audio-only and sub-720p video both bill the same full-source 720p reference.
 - Delivered files are only kept for 24 hours and count toward a storage limit, so copy them
   straight away and delete them. The delivery URL is signed: never send it the API key or log it.
 """
@@ -19,6 +20,7 @@ import logging
 import os
 import random
 import re
+import subprocess
 import uuid
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Dict, Optional
@@ -30,6 +32,17 @@ from backend.config import get_settings
 
 logger = logging.getLogger(__name__)
 
+
+class _NoSignedUrls(logging.Filter):
+    """httpx logs every request's full URL at INFO, which would put delivery signatures in our logs."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        message = record.getMessage()
+        return "X-Amz-Signature" not in message and "verify=" not in message
+
+
+logging.getLogger("httpx").addFilter(_NoSignedUrls())
+
 BASE_URL = "https://api.tornadoapi.io"
 
 _VIDEO_ID = re.compile(r"^[A-Za-z0-9_-]{11}$")
@@ -38,7 +51,17 @@ _TERMINAL = {"Completed", "Failed", "Warning", "Skipped", "Cancelled", "Cancelle
 
 _CREATE_ATTEMPTS = 3
 _MAX_RETRY_AFTER_SECONDS = 30.0
-_MAX_FILE_BYTES = 1024 * 1024 * 1024  # audio only; anything this big isn't a song
+_MAX_FILE_BYTES = 2 * 1024 * 1024 * 1024  # includes a 360p video track; anything this big isn't a song
+_DEMUX_TIMEOUT_SECONDS = 120
+# Delivered container -> (extension for the audio we keep, ffmpeg muxer). Audio is never re-encoded.
+_AUDIO_CONTAINERS = {
+    ".webm": (".webm", "webm"),
+    ".mkv": (".webm", "webm"),
+    ".opus": (".ogg", "ogg"),  # .ogg: gen's upload and review allow-lists reject .opus
+    ".ogg": (".ogg", "ogg"),
+    ".mp4": (".m4a", "ipod"),
+    ".m4a": (".m4a", "ipod"),
+}
 
 
 class TornadoError(Exception):
@@ -67,6 +90,7 @@ class TornadoClient:
         poll_interval_seconds: float = 3.0,
         transport: Optional[httpx.AsyncBaseTransport] = None,
         sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+        demux: Optional[Callable[[str, str, str], None]] = None,
         clock: Callable[[], float] = lambda: asyncio.get_running_loop().time(),
     ):
         self._api_key = api_key
@@ -75,6 +99,7 @@ class TornadoClient:
         self._poll_interval_seconds = poll_interval_seconds
         self._transport = transport
         self._sleep = sleep
+        self._demux = demux or _demux_audio
         self._clock = clock
 
     def _http(self, timeout: float = 30.0) -> httpx.AsyncClient:
@@ -125,11 +150,17 @@ class TornadoClient:
         if not delivery_url:
             raise TornadoError(f"Tornado job {job_id} completed without a delivery URL")
 
-        await self._fetch_file(delivery_url, dest_path)
+        extension, muxer = self._audio_container(delivery_url)
+        source_path = f"{dest_path}.source"
+        try:
+            await self._fetch_file(delivery_url, source_path)
+            await asyncio.to_thread(self._demux, source_path, dest_path, muxer)
+        finally:
+            self._remove_partial(source_path)
         await self._delete_file(job_id)
         return TornadoDownload(
             tornado_job_id=job_id,
-            extension=self._extension(delivery_url),
+            extension=extension,
             file_size=job.get("file_size"),
             billable_bytes=job.get("billable_bytes"),
         )
@@ -148,7 +179,7 @@ class TornadoClient:
             raise TornadoAccountError(f"Tornado rejected the account: HTTP {resp.status_code}")
 
     async def _create_job(self, url: str, idempotency_key: str) -> str:
-        body = {"url": url, "audio_only": True, "format": "opus"}
+        body = {"url": url, "format": "webm", "max_resolution": "360"}
         headers = {**self._headers(), "x-idempotency-key": idempotency_key}
         last_problem = "no attempt made"
         retry_after: Optional[str] = None
@@ -280,13 +311,28 @@ class TornadoClient:
             logger.info(f"Could not cancel Tornado job {job_id}: {type(e).__name__}")
 
     @staticmethod
-    def _extension(delivery_url: str) -> str:
-        # We ask for Opus, which arrives in an Ogg container. Name it .ogg: that's accurate, and
-        # gen's upload and review allow-lists accept .ogg but not .opus.
+    def _audio_container(delivery_url: str) -> "tuple[str, str]":
         ext = os.path.splitext(urlsplit(delivery_url).path)[1].lower()
-        if ext == ".opus" or not re.fullmatch(r"\.[a-z0-9]{2,5}", ext):
-            return ".ogg"
-        return ext
+        return _AUDIO_CONTAINERS.get(ext, _AUDIO_CONTAINERS[".webm"])
+
+
+def _demux_audio(source_path: str, dest_path: str, muxer: str) -> None:
+    """Keep only the audio track, without re-encoding it."""
+    try:
+        subprocess.run(
+            ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", source_path,
+             "-map", "0:a:0", "-c:a", "copy", "-f", muxer, dest_path],
+            check=True, capture_output=True, text=True, timeout=_DEMUX_TIMEOUT_SECONDS,
+        )
+        if not os.path.getsize(dest_path):
+            raise TornadoError("ffmpeg produced an empty audio file")
+    except (OSError, subprocess.SubprocessError) as e:
+        try:
+            os.remove(dest_path)
+        except OSError:
+            pass
+        stderr = getattr(e, "stderr", None) or ""
+        raise TornadoError(f"Could not extract the audio track: {type(e).__name__} {stderr[:200]}") from e
 
 
 _client: Optional[TornadoClient] = None
