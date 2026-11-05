@@ -77,8 +77,9 @@ MONITORED_CLOUD_RUN_JOBS: list[str] = [
 MONITORED_CLOUD_FUNCTIONS: list[str] = []
 
 MONITORED_GCE_INSTANCES: list[str] = [
-    "encoding-worker-a",
-    "encoding-worker-b",
+    # GCE encoding fallback; the c4d pair (encoding-worker-a/b) was retired
+    # 2026-11 and the AWS worker (aws-encoding-worker-1) logs on the box.
+    "encoding-worker-fallback-c2df",
     "flacfetch-vm",
     "divebar-sync-vm",
 ]
@@ -96,7 +97,8 @@ karaoke-backend (main API)
   → audio-separation-job      (Cloud Run Job, runs on Cloud Run GPU)
   → audio-download-job        (Cloud Run Job, uses flacfetch-vm)
   → gdrive-validator          (Cloud Function, validates output files)
-  → encoding-worker-a/b       (GCE VMs, long-running encoding workers)
+  → aws-encoding-worker-1     (AWS EC2, preferred encoding + distribution worker)
+  → encoding-worker-fallback-c2df (GCE VM, encoding fallback)
 
 karaoke-decide (catalog / discovery API)
   → kn_data_sync              (Cloud Function, syncs KaraokeNerds catalog)

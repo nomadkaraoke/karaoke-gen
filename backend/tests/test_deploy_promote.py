@@ -247,12 +247,45 @@ def test_secondary_promotion_leaves_aws_override_serving():
     assert [d["vm"] for d in plan["drain_and_stop"]] == ["encoding-worker-a"]
 
 
-def test_fallback_promotion_does_not_drain_aws_override():
+def test_fallback_green_is_validate_only_while_aws_serves():
+    """With the AWS worker serving, a GCE fallback green must not displace it:
+    record the validated version, keep the override, stop the green."""
     config = {"active_override_vm": "aws-encoding-worker-1", "active_override_zone": "us-east-2b",
               "active_override_provider": "aws"}
     green = {"vm": "encoding-worker-fallback-c2df", "ip": "2.2.2.2", "zone": "us-central1-f", "kind": "fallback"}
     plan = deploy_promote.promote_plan(green, config, now="2026-10-29T00:00:00Z", version="2.0")
-    assert plan["drain_and_stop"] == []
+    updates = plan["firestore_updates"]
+    assert not any(k.startswith("active_override") for k in updates)
+    assert updates["validated_version"] == "2.0"
+    assert updates["deploy_in_progress"] is False
+    # Never the AWS override; only the green we booted for validation.
+    assert plan["drain_and_stop"] == [
+        {"vm": "encoding-worker-fallback-c2df", "ip": "2.2.2.2", "zone": "us-central1-f"}
+    ]
+
+
+def test_aws_override_hidden_by_ci_is_still_recognised():
+    """CI blanks the AWS override's vm/ip/zone but passes the provider; that alone
+    must keep the AWS worker serving (no c4d pair, 2026-11)."""
+    config = {"active_override_vm": None, "active_override_provider": "aws"}
+    green = {"vm": "encoding-worker-fallback-c2df", "ip": "2.2.2.2", "zone": "us-central1-f", "kind": "fallback"}
+    plan = deploy_promote.promote_plan(green, config, now="t", version="2.1")
+    assert "active_override_vm" not in plan["firestore_updates"]
+
+
+def test_no_pair_green_selection_is_fallbacks_only():
+    """Once the c4d pair is retired (empty secondary), the only GCE green is c2df."""
+    config = {"secondary_vm": None, "active_override_vm": None}
+    fallbacks = [{"vm": "encoding-worker-fallback-c2df", "zone": "us-central1-f", "ip": "2.2.2.2"}, _AWS]
+    names = [c["vm"] for c in deploy_promote.select_green_candidates(config, fallbacks)]
+    assert names == ["encoding-worker-fallback-c2df"]
+
+
+@pytest.mark.parametrize("kind", ["secondary", "fallback"])
+def test_every_promote_records_validated_version(kind):
+    green = {"vm": "g", "ip": "9.9.9.9", "zone": "us-central1-f", "kind": kind}
+    plan = deploy_promote.promote_plan(green, {"primary_vm": "p"}, now="t", version="3.0")
+    assert plan["firestore_updates"]["validated_version"] == "3.0"
 
 
 def test_fallback_promotion_clears_provider_tag():

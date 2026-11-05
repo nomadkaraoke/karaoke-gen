@@ -35,6 +35,7 @@ from datetime import datetime, timezone, timedelta
 
 import functions_framework
 import requests
+from google.api_core import exceptions as gcp_exceptions
 from google.cloud import compute_v1, firestore
 
 logger = logging.getLogger(__name__)
@@ -68,6 +69,11 @@ def get_vm_status(vm_name, zone=ZONE):
     try:
         instance = client.get(project=PROJECT_ID, zone=zone, instance=vm_name)
         return instance.status
+    except gcp_exceptions.NotFound:
+        # A VM still named in config/secret but deleted (e.g. the retired c4d
+        # pair): expected, not page-worthy.
+        logger.warning(f"VM {vm_name} not found in {zone}; skipping")
+        return "NOT_FOUND"
     except Exception as e:
         logger.error(f"Failed to get status for {vm_name} in {zone}: {e}")
         return "UNKNOWN"

@@ -239,7 +239,15 @@ class EncodingService:
 
         if self._worker_manager:
             config = self._worker_manager.get_config()
-            self._cached_url = config.active_url
+            url = config.active_url
+            if not url:
+                # No primary pair and no override recorded yet: target the
+                # top-ranked candidate. If it's stopped, the connection failure
+                # triggers the warmup fallback, which starts it and records it
+                # as the override.
+                candidates = self._worker_manager.ranked_candidates(config)
+                url = candidates[0].url if candidates else ""
+            self._cached_url = url
             self._url_cached_at = now
             return self._cached_url
 
@@ -456,6 +464,10 @@ class EncodingService:
                     self._invalidate_cached_url()
             else:
                 result = await asyncio.to_thread(self._worker_manager.ensure_primary_running)
+                # With no GCE primary pair, ensure_primary_running starts a ranked
+                # candidate and records it as the override.
+                if result.get("fell_back"):
+                    self._invalidate_cached_url()
         except EncodingWorkerStartError:
             # Every candidate exhausted (or single-zone primary failed) — both
             # capacity errors and other start failures (e.g. 503

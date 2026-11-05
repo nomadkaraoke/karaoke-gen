@@ -33,8 +33,8 @@ def get_project_number() -> str:
 REGION = "us-central1"
 ZONE = f"{REGION}-a"
 
-# Encoding worker zone - uses us-central1-c due to c4d availability
-# (us-central1-a and us-central1-b often lack capacity for high-end C4D instances)
+# Default zone the encoding idle-shutdown function targets (GCP_ZONE). The c4d
+# pair that lived here was retired 2026-11; fallbacks carry their own zones.
 ENCODING_WORKER_ZONE = f"{REGION}-c"
 
 # Pulumi config accessor
@@ -52,7 +52,8 @@ class MachineTypes:
     # only kept ~66-78% of 32 vCPUs busy; ffmpeg auto-threads adapt to 16). The
     # worker serializes heavy jobs (ENCODING_HEAVY_CONCURRENCY=1), and highcpu-16
     # still has ~30-32 GB RAM — enough for one 4K encode (~18 GB peak).
-    ENCODING_WORKER = "c4d-highcpu-16"  # 16 vCPU / 30 GB, AMD EPYC Turin — Spot blue-green pair
+    # (The c4d-highcpu-16 Spot blue-green pair was retired 2026-11 in favour of
+    # the AWS EC2 worker, infrastructure/aws/.)
     # The ONE on-demand capacity fallback. Deliberately a DIFFERENT machine family
     # and zone from the c4d Spot pair: c4d suffered a region-wide
     # ZONE_RESOURCE_POOL_EXHAUSTED stockout (2026-08-12), and Spot capacity can
@@ -307,9 +308,7 @@ GITHUB_REPO_NAME = "karaoke-gen"
 
 
 class EncodingWorkerConfig:
-    """Configuration for blue-green encoding worker VMs."""
-    VM_NAMES = ["encoding-worker-a", "encoding-worker-b"]
-    IP_NAMES = ["encoding-worker-ip-a", "encoding-worker-ip-b"]
+    """Configuration for the GCE encoding worker fallback fleet + idle shutdown."""
     # Stop idle workers fast: VMs bill per second while RUNNING, and with only
     # ~5-20 jobs/day most of the old 15-min tail was paid idle time. The function
     # still NEVER stops a VM with active jobs (fail-safe on unconfirmed /health).
@@ -318,12 +317,6 @@ class EncodingWorkerConfig:
     FUNCTION_NAME = "encoding-worker-idle-shutdown"
     FUNCTION_MEMORY = "512M"  # Increased from 256M — OOM with gRPC/Firestore/Compute client libs
     FUNCTION_TIMEOUT = 120  # 2 minutes
-
-    # The a/b blue-green pair runs on SPOT capacity (~60-70% cheaper). A preempted
-    # Spot VM is STOPPED (not deleted) — the backend restarts it on the next
-    # request, and an encode lost to preemption is resubmitted automatically
-    # (encoding_service.wait_for_completion → EncodingJobLostError).
-    PRIMARY_PAIR_SPOT = True
 
     # Capacity-resilience fallback. Provisioned STOPPED and started on demand only
     # when the Spot pair can't start (ZONE_RESOURCE_POOL_EXHAUSTED / Spot

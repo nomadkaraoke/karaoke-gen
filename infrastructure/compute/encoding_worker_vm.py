@@ -1,115 +1,18 @@
 """
-Encoding Worker VM resources — blue-green deployment pair.
+Encoding Worker VM resources — the GCE capacity-fallback fleet.
 
-Manages two identical VMs (a/b) for zero-downtime deployments.
-Only one is active (primary) at a time; the other is stopped (secondary).
-Both auto-shutdown when idle to minimize cost, and both run on SPOT capacity
-(preempted → STOPPED, restarted on demand; lost encodes are resubmitted). One
-on-demand fallback VM in a different family/zone absorbs Spot stockouts.
+The c4d Spot blue-green pair (encoding-worker-a/-b) was retired 2026-11; the AWS
+EC2 worker (infrastructure/aws/) is now the preferred encoder. What remains here
+is the on-demand fallback (c2df), provisioned stopped and started on demand.
 
-See docs/superpowers/specs/2026-03-24-blue-green-encoding-worker-design.md
+History: docs/superpowers/specs/2026-03-24-blue-green-encoding-worker-design.md
 """
 
 import pulumi
 from pulumi_gcp import compute, serviceaccount
 
-from config import REGION, ENCODING_WORKER_ZONE, PROJECT_ID, MachineTypes, DiskSizes, EncodingWorkerConfig
+from config import REGION, PROJECT_ID, MachineTypes, DiskSizes, EncodingWorkerConfig
 from .startup_scripts import read_script
-
-
-def create_encoding_worker_ips() -> list[compute.Address]:
-    """Create static IPs for both encoding worker VMs."""
-    ips = []
-    for name in EncodingWorkerConfig.IP_NAMES:
-        ip = compute.Address(
-            name,
-            name=name,
-            region=REGION,
-            address_type="EXTERNAL",
-            description=f"Static external IP for {name}",
-        )
-        ips.append(ip)
-    return ips
-
-
-def create_encoding_worker_vms(
-    ips: list[compute.Address],
-    service_account: serviceaccount.Account,
-) -> list[compute.Instance]:
-    """Create the blue-green encoding worker VM pair."""
-    startup_script = read_script("encoding_worker.sh")
-    custom_image = f"projects/{PROJECT_ID}/global/images/family/encoding-worker"
-
-    vms = []
-    for vm_name, ip in zip(EncodingWorkerConfig.VM_NAMES, ips):
-        vm = compute.Instance(
-            vm_name,
-            name=vm_name,
-            machine_type=MachineTypes.ENCODING_WORKER,
-            zone=ENCODING_WORKER_ZONE,
-            boot_disk=compute.InstanceBootDiskArgs(
-                initialize_params=compute.InstanceBootDiskInitializeParamsArgs(
-                    image=custom_image,
-                    size=DiskSizes.ENCODING_WORKER,
-                    type="hyperdisk-balanced",
-                    # NOTE: Hyperdisk provisioned IOPS/throughput are deliberately
-                    # NOT set here. Specifying them forces a full VM *replacement*
-                    # (the provider treats boot-disk init params as immutable), and
-                    # recreating a primary depends on us-central1-c capacity — the
-                    # exact shortage the fallback fleet exists to absorb. So the
-                    # disks are pinned to the Hyperdisk Balanced free baseline
-                    # (3000 IOPS / 140 MB/s) live via `gcloud compute disks update`
-                    # instead — non-disruptive, and pulumi does not manage this
-                    # attribute so there is no drift. They were over-provisioned at
-                    # 3600 IOPS / 290 MB/s (~$8.70/disk/mo wasted). Re-apply the
-                    # gcloud tune after any worker-image rebuild that recreates the
-                    # disks. See docs/archive/2026-06-14-gcp-cost-reduction-plan.md.
-                ),
-            ),
-            network_interfaces=[compute.InstanceNetworkInterfaceArgs(
-                network="default",
-                access_configs=[compute.InstanceNetworkInterfaceAccessConfigArgs(
-                    nat_ip=ip.address,
-                )],
-            )],
-            service_account=compute.InstanceServiceAccountArgs(
-                email=service_account.email,
-                scopes=["cloud-platform"],
-            ),
-            metadata_startup_script=startup_script,
-            tags=["encoding-worker"],
-            allow_stopping_for_update=True,
-            advanced_machine_features=compute.InstanceAdvancedMachineFeaturesArgs(
-                threads_per_core=2,
-            ),
-            scheduling=_primary_pair_scheduling(),
-        )
-        vms.append(vm)
-    return vms
-
-
-def _primary_pair_scheduling() -> compute.InstanceSchedulingArgs:
-    """Scheduling for the a/b pair: Spot with STOP-on-preemption.
-
-    STOP (not DELETE) keeps the VM, its disk and static IP, so a preempted
-    worker is just a TERMINATED instance that the backend's ensure-running path
-    restarts like any idle-stopped worker. automatic_restart must be False and
-    on_host_maintenance TERMINATE for Spot.
-    """
-    if not EncodingWorkerConfig.PRIMARY_PAIR_SPOT:
-        return compute.InstanceSchedulingArgs(
-            provisioning_model="STANDARD",
-            preemptible=False,
-            automatic_restart=True,
-            on_host_maintenance="MIGRATE",
-        )
-    return compute.InstanceSchedulingArgs(
-        provisioning_model="SPOT",
-        preemptible=True,
-        automatic_restart=False,
-        on_host_maintenance="TERMINATE",
-        instance_termination_action="STOP",
-    )
 
 
 def create_encoding_worker_fallback_ips() -> list[compute.Address]:
@@ -128,7 +31,7 @@ def create_encoding_worker_fallback_ips() -> list[compute.Address]:
             region=REGION,
             address_type="EXTERNAL",
             # Keep this string byte-identical to the originally-deployed value so
-            # `pulumi up` does not diff (and needlessly churn) the existing a/b IPs.
+            # `pulumi up` does not diff (and needlessly churn) the existing IPs.
             description=f"Static external IP for {ip_name} (zone-fallback)",
         )
         ips.append(ip)

@@ -592,3 +592,26 @@ class TestCheckActiveJobs:
                 patch("main.time.sleep"):
             assert main.check_active_jobs("1.2.3.4", attempts=3) == 1
         assert get.call_count == 2
+
+
+def test_missing_vm_logs_warning_not_error(mock_compute, caplog):
+    """A VM deleted but still named somewhere (the retired c4d pair) is expected:
+    WARNING + NOT_FOUND, never ERROR (the error monitor alerts on ERROR)."""
+    from google.api_core import exceptions as gcp_exceptions
+
+    mock_compute.get.side_effect = gcp_exceptions.NotFound("instance gone")
+    with caplog.at_level("WARNING"):
+        assert main.get_vm_status("encoding-worker-a") == "NOT_FOUND"
+    assert not [r for r in caplog.records if r.levelname == "ERROR"]
+
+
+def test_blank_pair_names_are_skipped(mock_compute, mock_firestore):
+    """After the c4d pair is retired config holds empty primary/secondary names."""
+    snap = MagicMock(exists=True)
+    snap.to_dict.return_value = _make_config(primary_vm="", secondary_vm="")
+    mock_firestore.collection.return_value.document.return_value.get.return_value = snap
+    with patch.object(main, "_parse_fallback_vms", return_value=[]):
+        body, status = main.idle_shutdown(MagicMock())
+    assert status == 200
+    assert json.loads(body)["results"] == {}
+    mock_compute.get.assert_not_called()

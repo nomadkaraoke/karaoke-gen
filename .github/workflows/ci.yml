@@ -1439,7 +1439,12 @@ jobs:
               print("::error::Encoding worker config not found in Firestore")
               raise SystemExit(1)
           data = doc.to_dict()
-          if (data.get("active_override_provider") or "").lower() == "aws":
+          aws_override = (data.get("active_override_provider") or "").lower() == "aws"
+          # Version the serving worker was last validated at: the CI gate diffs
+          # worker code against it. primary_version stops moving once the c4d
+          # pair is retired, so prefer validated_version (written on promote).
+          data["validated_version"] = data.get("validated_version") or data.get("primary_version")
+          if aws_override:
               # The AWS encoding worker (EC2) is serving by preference. This
               # GCE blue-green flow can't gcloud-start/stop it and must not
               # clear its override; it picks up the new wheel on its next job.
@@ -1449,7 +1454,8 @@ jobs:
               for key in ("active_override_vm", "active_override_ip", "active_override_zone"):
                   data[key] = None
           with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-              for key in ["primary_vm", "primary_ip", "primary_version",
+              f.write(f"aws_override={str(aws_override).lower()}\n")
+              for key in ["primary_vm", "primary_ip", "primary_version", "validated_version",
                           "secondary_vm", "secondary_ip",
                           "active_override_vm", "active_override_ip", "active_override_zone"]:
                   # `or ''`: a key stored as null must be empty, not the string
@@ -1475,7 +1481,7 @@ jobs:
         id: worker_gate
         env:
           FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force_encoding_worker_deploy == true }}
-          SERVING_VERSION: ${{ steps.config.outputs.primary_version }}
+          SERVING_VERSION: ${{ steps.config.outputs.validated_version }}
           OVERRIDE_VM: ${{ steps.config.outputs.active_override_vm }}
         run: |
           mapfile -t PATHS < <(grep -v '^\s*#' infrastructure/encoding-worker/worker_code_paths.txt | grep -v '^\s*$')
@@ -1621,7 +1627,34 @@ jobs:
               # serving override in place (accepts a brief blip; auto-resubmit
               # covers any in-flight render). If there's no override either, fail.
               ov = os.environ.get("OVERRIDE_VM")
+              ov_ip = os.environ.get("OVERRIDE_IP")
+
+              def _active_jobs(ip):
+                  import urllib.request
+                  if not ip:
+                      return None
+                  try:
+                      with urllib.request.urlopen(f"http://{ip}:8080/health", timeout=5) as r:
+                          return json.load(r).get("active_jobs")
+                  except Exception:
+                      return None
+
+              # Since the c4d pair was retired (2026-11) this is the normal path when
+              # AWS is in cooldown and c2df serves: never stop it mid-render. Wait
+              # (bounded) for a confirmed idle worker; if it stays busy, skip — it
+              # idle-stops after 5 min and cold-boots the new wheel next time.
+              drained = True
               if ov:
+                  drain_deadline = time.monotonic() + 900
+                  n = _active_jobs(ov_ip)
+                  while n != 0 and time.monotonic() < drain_deadline:
+                      print(f"  serving override {ov} active_jobs={n}; waiting to restart")
+                      time.sleep(15)
+                      n = _active_jobs(ov_ip)
+                  drained = n == 0 or vm_status(ov, os.environ.get("OVERRIDE_ZONE") or "us-central1-f") != "RUNNING"
+                  if not drained:
+                      print(f"::warning::Serving override {ov} still busy (active_jobs={n}); skipping in-place restart")
+              if ov and drained:
                   zone = os.environ.get("OVERRIDE_ZONE") or "us-central1-f"
                   print(f"::warning::No separate green could start; restarting serving override {ov} in place")
                   subprocess.run(["gcloud", "compute", "instances", "stop", ov,
@@ -1646,7 +1679,7 @@ jobs:
                   if final_status != "RUNNING":
                       inplace_failed = True
                       print(f"::error::In-place restart of {ov} did not reach RUNNING (status={final_status or 'unknown'})")
-              else:
+              elif not ov:
                   print("::error::No green target could be started and no active override exists")
 
           def _out(**kv):
@@ -1841,6 +1874,7 @@ jobs:
           OVERRIDE_VM: ${{ steps.config.outputs.active_override_vm }}
           OVERRIDE_IP: ${{ steps.config.outputs.active_override_ip }}
           OVERRIDE_ZONE: ${{ steps.config.outputs.active_override_zone }}
+          AWS_OVERRIDE: ${{ steps.config.outputs.aws_override }}
         run: |
           python3 << 'PYEOF'
           import json, os, subprocess, sys, time, urllib.request
@@ -1859,6 +1893,9 @@ jobs:
               "active_override_vm": os.environ.get("OVERRIDE_VM") or None,
               "active_override_ip": os.environ.get("OVERRIDE_IP") or None,
               "active_override_zone": os.environ.get("OVERRIDE_ZONE") or None,
+              # The config step hid an AWS override from the GCE flow; tell the
+              # promote plan so a fallback green doesn't displace it.
+              "active_override_provider": "aws" if os.environ.get("AWS_OVERRIDE") == "true" else None,
           }
           now = datetime.now(timezone.utc).isoformat()
           plan = deploy_promote.promote_plan(green, config, now=now, version=os.environ["NEW_VERSION"])
@@ -1866,7 +1903,10 @@ jobs:
           db = firestore.Client(project="nomadkaraoke")
           db.collection("config").document("encoding-worker").update(plan["firestore_updates"])
           print("Applied config update:", json.dumps(plan["firestore_updates"], default=str))
-          print(f"Green {green['vm']} ({green['kind']}) is now serving")
+          if any(t.get("vm") == green["vm"] for t in plan["drain_and_stop"]):
+              print(f"Green {green['vm']} ({green['kind']}) validated; AWS worker stays serving, stopping the green")
+          else:
+              print(f"Green {green['vm']} ({green['kind']}) is now serving")
 
           def active_jobs(ip):
               # /health is unauthenticated; None == "unknown / maybe busy".

@@ -235,7 +235,7 @@ TESTMAIL_NAMESPACE=...       # testmail.app namespace
 
 ## Encoding Worker Operations
 
-The encoding worker is a Spot blue-green primary pair (`encoding-worker-a`/`-b`, c4d-highcpu-16) plus one stopped on-demand fallback (`encoding-worker-fallback-c2df`, c2d-highcpu-16, us-central1-f) — 3 VMs total since 2026-09-26. CI only blue-green redeploys the worker when a path in `infrastructure/encoding-worker/worker_code_paths.txt` changed since the serving version (or via Actions → CI → Run workflow with "Force a blue-green redeploy of the GCE encoding worker"). Candidate ordering (runtime + deploy) is the shared `backend/services/encoding_worker_preference.py`. See [ARCHITECTURE.md](ARCHITECTURE.md#encoding-worker-blue-green-primary-pair--multi-family-fallback-pool) for the full design.
+The encoding worker is the AWS EC2 box `aws-encoding-worker-1` (preferred, also runs distribution) plus one stopped on-demand GCE fallback (`encoding-worker-fallback-c2df`, c2d-highcpu-16, us-central1-f). The c4d Spot pair (`encoding-worker-a`/`-b`) was retired and deleted in 2026-11; examples below that name it should use c2df (`--zone=us-central1-f`). CI only blue-green redeploys the worker when a path in `infrastructure/encoding-worker/worker_code_paths.txt` changed since the serving version (or via Actions → CI → Run workflow with "Force a blue-green redeploy of the GCE encoding worker"). Candidate ordering (runtime + deploy) is the shared `backend/services/encoding_worker_preference.py`. See [ARCHITECTURE.md](ARCHITECTURE.md#encoding-worker-blue-green-primary-pair--multi-family-fallback-pool) for the full design.
 
 ### Seed Firestore config (initial setup or reset)
 

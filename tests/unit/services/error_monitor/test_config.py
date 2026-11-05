@@ -74,22 +74,24 @@ class TestMonitoredServiceLists:
 
         assert config.MONITORED_CLOUD_FUNCTIONS == []
 
-    def test_gce_instances_count_at_least_4(self):
+    def test_gce_instances_count_at_least_3(self):
         from backend.services.error_monitor import config
 
-        assert len(config.MONITORED_GCE_INSTANCES) >= 4
+        assert len(config.MONITORED_GCE_INSTANCES) >= 3
 
     def test_gce_instances_contains_expected(self):
         from backend.services.error_monitor import config
 
         expected = [
-            "encoding-worker-a",
-            "encoding-worker-b",
+            "encoding-worker-fallback-c2df",
             "flacfetch-vm",
             "divebar-sync-vm",
         ]
         for instance in expected:
             assert instance in config.MONITORED_GCE_INSTANCES, f"Expected '{instance}' in MONITORED_GCE_INSTANCES"
+        # The c4d pair was retired 2026-11; monitoring deleted VMs is noise.
+        assert "encoding-worker-a" not in config.MONITORED_GCE_INSTANCES
+        assert "encoding-worker-b" not in config.MONITORED_GCE_INSTANCES
 
 
 class TestDefaultValues:
