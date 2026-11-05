@@ -582,6 +582,24 @@ def _dev_audio_proxy_enabled() -> bool:
     return os.environ.get("REVIEW_AUDIO_PROXY", "").lower() in ("1", "true", "yes")
 
 
+def _review_vocals_path(job) -> Optional[str]:
+    """Vocals stem for the review waveform. Storage retention purges separated stems
+    30 days after completion; for those jobs fall back to the backfilled word-timing
+    training copy of the lead stem (``training/lead_vocals/{job_id}.flac``), so
+    replaying an old job still shows the vocal waveform. Blocking (GCS exists check)."""
+    from datetime import datetime as _dt
+
+    path = _vocals_stem_path(job)
+    purged = getattr(job, "stems_purged_at", None)
+    if path or not isinstance(purged, (_dt, str)) or not purged:
+        return path
+    training = f"training/lead_vocals/{job.job_id}.flac"
+    try:
+        return training if StorageService().file_exists(training) else None
+    except Exception:  # noqa: BLE001 - best-effort fallback
+        return None
+
+
 def _dev_audio_url(job_id: str, gcs_path: Optional[str], base_url: str = "") -> Optional[str]:
     """Build an ABSOLUTE dev-proxy URL for a review audio/image artifact.
 
@@ -1047,7 +1065,7 @@ async def _stream_audio(job_id: str, request: Optional[Request] = None, stem: Li
     if stem == "input":
         audio_gcs_path = job.input_media_gcs_path
     elif stem == "vocals":
-        audio_gcs_path = _vocals_stem_path(job)
+        audio_gcs_path = await asyncio.to_thread(_review_vocals_path, job)
     if not audio_gcs_path:
         # Audio separation is decoupled from the lyrics-review critical path, so a
         # user can open review before the vocal stems have been uploaded (the stem
@@ -1347,6 +1365,7 @@ async def complete_review(
 class SyncReferenceRequest(_PydBaseModel):
     verified: bool
     notes: Optional[str] = None
+    reasons: Optional[List[str]] = None   # why not perfectly synced (preset chips)
 
 
 @router.post("/{job_id}/sync-reference")
@@ -1376,6 +1395,7 @@ async def set_sync_reference(job_id: str, body: SyncReferenceRequest, auth_resul
         "by": auth_result.user_email or str(auth_result.user_type),
         "at": datetime.now(timezone.utc).isoformat(),
         "notes": (body.notes or "").strip()[:2000] or None,
+        "reasons": [r.strip()[:80] for r in (body.reasons or []) if r and r.strip()][:10] or None,
     }
     await asyncio.to_thread(job_manager.update_state_data, job_id, "sync_reference", record)
     logger.info(f"Job {job_id}: sync_reference verified={body.verified} by {record['by']}")
@@ -2496,7 +2516,7 @@ async def get_vocals_peaks(
     if not job:
         raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
 
-    vocals_path = _vocals_stem_path(job)
+    vocals_path = await asyncio.to_thread(_review_vocals_path, job)
     if not vocals_path:
         if not job.state_data.get("audio_complete", False):
             return Response(status_code=202, headers={"Retry-After": "15"})

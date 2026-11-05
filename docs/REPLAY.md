@@ -84,3 +84,24 @@ easy to talk through what the AI got right, what you overrode, and what's left.
   AI-corrected words tagged (`ai_corrected`, `original_text`, `timing_estimated`).
 - If a job had its outputs deleted (admin "delete outputs"), stems may be gone and
   audio won't load — the lyrics/action-log still work.
+
+## Sync triage: building the word-timing reference set (full-auto v2)
+
+Replay doubles as the triage UI for the **perfectly synced** reference set: the jobs whose
+reviewed word timing is trusted for aligner training and evaluation. In production, open
+replay as an admin with a `queue` of job ids:
+
+```
+https://gen.nomadkaraoke.com/en/app/jobs?replay=1&queue=<id1>,<id2>,...#/<id1>/review
+```
+
+A **Reference set** bar under the replay nav records the verdict:
+- **Perfectly synced**: a confident spot-check is enough (anchors, waveforms, a listen to anything suspicious).
+- **Not perfect**: tick reason chips, add optional notes.
+- **Save & next job** saves and moves to the next queued job.
+
+Verdicts go to `state_data.sync_reference` through `POST /api/review/{job_id}/sync-reference`
+(admin only), the same store as the review modal's "perfectly synced" checkbox.
+
+For jobs whose stems storage retention purged, the vocal waveform falls back to the
+backfilled training copy `training/lead_vocals/{job_id}.flac` (`_review_vocals_path`).
