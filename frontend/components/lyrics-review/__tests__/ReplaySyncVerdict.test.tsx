@@ -38,7 +38,18 @@ describe('ReplaySyncVerdict (replay triage for the timing reference set)', () =>
   it('shows the saved verdict and keeps Save disabled until a choice exists', () => {
     render(<ReplaySyncVerdict jobId="b2" saved={{ verified: true, at: '2026-11-04T10:00:00+00:00' }} />)
     expect(screen.getByTestId('replay-sync-status')).toHaveTextContent('Saved: perfectly synced')
+  })
+
+  it('flags an unsaved change until it is saved', async () => {
+    render(<ReplaySyncVerdict jobId="b2" saved={{ verified: true }} />)
+    await userEvent.click(screen.getByRole('button', { name: 'Not perfect' }))
+    expect(screen.getByTestId('replay-sync-status')).toHaveTextContent('Unsaved changes')
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect(screen.getByTestId('replay-sync-status')).toHaveTextContent('Saved: not perfect')
+  })
+
+  it('keeps Save disabled until a choice exists', () => {
     render(<ReplaySyncVerdict jobId="a1" saved={null} />)
-    expect(screen.getAllByRole('button', { name: 'Save' })[1]).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
   })
 })

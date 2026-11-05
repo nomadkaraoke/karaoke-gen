@@ -617,6 +617,7 @@ export function ReplaySyncVerdict({
     saved ? `Saved: ${saved.verified ? "perfectly synced" : "not perfect"}${saved.at ? ` · ${saved.at.slice(0, 16).replace("T", " ")}` : ""}` : "Not triaged yet"
   )
   const [busy, setBusy] = useState(false)
+  const markDirty = () => setStatus("Unsaved changes")
 
   const nextJob = () => {
     const queue = new URLSearchParams(window.location.search).get("queue")?.split(",").map((x) => x.trim()).filter(Boolean) ?? []
@@ -654,13 +655,13 @@ export function ReplaySyncVerdict({
     <div className="mx-4 mt-2 rounded-lg border bg-card px-3 py-2 space-y-2" data-testid="replay-sync-verdict">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs text-muted-foreground mr-1">Reference set:</span>
-        <button className={pill(choice === "synced", "good")} onClick={() => setChoice("synced")}>Perfectly synced</button>
-        <button className={pill(choice === "not", "bad")} onClick={() => setChoice("not")}>Not perfect</button>
+        <button className={pill(choice === "synced", "good")} onClick={() => { setChoice("synced"); markDirty() }}>Perfectly synced</button>
+        <button className={pill(choice === "not", "bad")} onClick={() => { setChoice("not"); markDirty() }}>Not perfect</button>
         <input
           className="flex-1 min-w-[12rem] rounded border bg-background px-2 py-1 text-sm"
           placeholder="Notes (optional)"
           value={notes}
-          onChange={(e) => setNotes(e.target.value)}
+          onChange={(e) => { setNotes(e.target.value); markDirty() }}
         />
         <button className="px-3 py-1 rounded text-sm font-medium border hover:bg-muted" disabled={!choice || busy} onClick={() => save(false)}>Save</button>
         <button className="px-3 py-1 rounded text-sm font-medium bg-primary text-primary-foreground disabled:opacity-40" disabled={!choice || busy} onClick={() => save(true)}>Save & next job →</button>
@@ -673,7 +674,7 @@ export function ReplaySyncVerdict({
               <input
                 type="checkbox"
                 checked={reasons.includes(r)}
-                onChange={(e) => setReasons(e.target.checked ? [...reasons, r] : reasons.filter((x) => x !== r))}
+                onChange={(e) => { setReasons(e.target.checked ? [...reasons, r] : reasons.filter((x) => x !== r)); markDirty() }}
               />
               {r}
             </label>
