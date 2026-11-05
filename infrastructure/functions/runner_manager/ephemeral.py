@@ -13,7 +13,6 @@ This module is invoked from main.py when RUNNER_MODE=ephemeral.
 
 from __future__ import annotations
 
-import base64
 import concurrent.futures
 import json
 import os
@@ -172,6 +171,17 @@ try {
 # ---------------------------------------------------------------------------
 
 _compute_client: compute_v1.InstancesClient | None = None
+
+
+def _log_error(message: str) -> None:
+    """Log at ERROR so the error monitor (severity>=ERROR) alerts on it.
+
+    Plain ``print`` lines have no severity in Cloud Logging. Use this for
+    failures of the stalled-job safety net: the error monitor ignores
+    webhook aborts on the assumption that this net catches dropped jobs,
+    so the net failing must page.
+    """
+    print(json.dumps({"severity": "ERROR", "message": message}), flush=True)
 
 
 def get_compute_client() -> compute_v1.InstancesClient:
@@ -716,7 +726,7 @@ def cleanup_orphans(pat: str) -> dict:
         try:
             result["redispatch"] = redispatch_stalled_jobs(pat, live_vms, runner_by_name)
         except Exception as exc:  # noqa: BLE001
-            print(f"redispatch_stalled_jobs failed: {exc!r}")
+            _log_error(f"redispatch_stalled_jobs failed: {exc!r}")
             result["redispatch"] = {"error": str(exc)}
 
     return result
@@ -781,7 +791,7 @@ def list_queued_self_hosted_jobs(pat: str) -> list[dict]:
                     if job.get("status") == "queued" and "self-hosted" in labels and can_serve(labels):
                         jobs.append({**job, "repo": repo})
         except Exception as exc:  # noqa: BLE001
-            print(f"Skipping {repo} in stalled-job scan: {exc!r}")
+            _log_error(f"Skipping {repo} in stalled-job scan: {exc!r}")
     return jobs
 
 
@@ -849,7 +859,7 @@ def redispatch_stalled_jobs(
         if age >= REDISPATCH_GIVE_UP_MINUTES:
             # Excluded from demand too, so a job we've abandoned doesn't make
             # every later stalled job in its family look under-supplied.
-            print(f"Not re-dispatching {job['repo']} job {job.get('id')}: queued {age:.0f}min (> give-up)")
+            _log_error(f"Not re-dispatching {job['repo']} job {job.get('id')}: queued {age:.0f}min (> give-up)")
             result["given_up"].append(job.get("id"))
             continue
         demand[family] = demand.get(family, 0) + 1
@@ -886,6 +896,6 @@ def redispatch_stalled_jobs(
             try:
                 result["dispatched"].append(fut.result()["runner_name"])
             except Exception as exc:  # noqa: BLE001
-                print(f"Re-dispatch for {job['repo']} job {job.get('id')} failed: {exc!r}")
+                _log_error(f"Re-dispatch for {job['repo']} job {job.get('id')} failed: {exc!r}")
                 result["dispatch_failed"].append(job.get("id"))
     return result

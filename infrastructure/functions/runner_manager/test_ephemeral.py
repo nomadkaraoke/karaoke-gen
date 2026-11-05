@@ -67,6 +67,19 @@ def _fresh_module(**env):
         return ephemeral
 
 
+
+def _error_messages(out: str) -> list[str]:
+    """Messages printed as structured ERROR logs (what the error monitor sees)."""
+    msgs = []
+    for line in out.splitlines():
+        try:
+            entry = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(entry, dict) and entry.get("severity") == "ERROR":
+            msgs.append(entry["message"])
+    return msgs
+
 class TestResolveFamily:
     def test_gpu_label_wins(self):
         ep = _fresh_module()
@@ -583,7 +596,7 @@ class TestRedispatchStalledJobs:
 
         create.assert_not_called()
 
-    def test_given_up_job_does_not_consume_spare_capacity(self):
+    def test_given_up_job_does_not_consume_spare_capacity(self, capsys):
         ep = _fresh_module()
         vms = [("us-central1-a", _make_instance("gha-build-idle", age_minutes=10))]
         runners = {"gha-build-idle": {"name": "gha-build-idle", "status": "online", "busy": False}}
@@ -592,6 +605,8 @@ class TestRedispatchStalledJobs:
 
         create.assert_not_called()
         assert result["given_up"] == [1]
+        # Giving up means the safety net failed: it must reach the error monitor.
+        assert any("Not re-dispatching" in m for m in _error_messages(capsys.readouterr().out))
 
     def test_idle_registered_runner_covers_the_stalled_job(self):
         ep = _fresh_module()
@@ -656,7 +671,7 @@ class TestRedispatchStalledJobs:
 
         assert create.call_count == 2
 
-    def test_dispatch_failure_is_recorded_and_others_continue(self):
+    def test_dispatch_failure_is_recorded_and_others_continue(self, capsys):
         ep = _fresh_module()
         jobs = [_queued_job(1, BUILD_LABELS, age_minutes=10), _queued_job(2, BUILD_LABELS, age_minutes=10)]
         outcomes = iter([RuntimeError("stockout"), {"runner_name": "gha-build-ok"}])
@@ -674,6 +689,7 @@ class TestRedispatchStalledJobs:
 
         assert result["dispatched"] == ["gha-build-ok"]
         assert len(result["dispatch_failed"]) == 1
+        assert any("Re-dispatch for" in m and "stockout" in m for m in _error_messages(capsys.readouterr().out))
 
 
 class TestFamilyOfRunnerName:
@@ -685,7 +701,7 @@ class TestFamilyOfRunnerName:
 
 
 class TestListQueuedSelfHostedJobs:
-    def test_collects_queued_self_hosted_jobs_across_repos(self):
+    def test_collects_queued_self_hosted_jobs_across_repos(self, capsys):
         ep = _fresh_module()
 
         def fake_request(method, path, pat, body=None):
@@ -713,6 +729,7 @@ class TestListQueuedSelfHostedJobs:
             jobs = ep.list_queued_self_hosted_jobs("ghp_test")
 
         assert [(j["repo"], j["id"]) for j in jobs] == [("karaoke-gen", 1)]
+        assert any("Skipping flacfetch in stalled-job scan" in m for m in _error_messages(capsys.readouterr().out))
         # Run 11 appeared under both statuses but its jobs are fetched once.
         job_calls = [c for c in req.call_args_list if "/runs/11/jobs" in c.args[1]]
         assert len(job_calls) == 1
@@ -736,7 +753,7 @@ class TestCleanupTriggersRedispatch:
         assert live == ["gha-build-booting"]
         assert result["redispatch"] == {"dispatched": []}
 
-    def test_redispatch_error_does_not_break_cleanup(self):
+    def test_redispatch_error_does_not_break_cleanup(self, capsys):
         ep = _fresh_module()
         with patch.object(ep, "_list_all_ephemeral_vms", return_value=[]), patch.object(
             ep, "list_org_runners", return_value=[]
@@ -744,6 +761,7 @@ class TestCleanupTriggersRedispatch:
             result = ep.cleanup_orphans("ghp_test")
 
         assert result["redispatch"] == {"error": "github down"}
+        assert any("redispatch_stalled_jobs failed" in m for m in _error_messages(capsys.readouterr().out))
         assert result["deleted_vms"] == []
 
     def test_kill_switch_disables_redispatch(self):
