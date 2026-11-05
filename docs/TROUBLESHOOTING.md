@@ -359,17 +359,17 @@ The script is idempotent — re-running it skips regeneration if the CDG ZIP alr
 **Cause:** Worker picks up a new deploy but doesn't restart automatically.
 
 Target the **currently-serving** VM — `active_override_vm` in `config/encoding-worker`
-if set, else `primary_vm` (with its zone). There is no VM literally named
-`encoding-worker`; the examples below use the primary `encoding-worker-a` — swap in
-the active VM/zone if a fallback is serving.
+if set, else `primary_vm` (with its zone). Since 2026-11 `primary_vm` is empty (the c4d
+pair was deleted): the serving VM is the AWS box (SSM shell, see
+`infrastructure/aws/README.md`) or the GCE fallback `encoding-worker-fallback-c2df`.
 
 ```bash
-# Check current wheel version (example: the primary a in us-central1-c)
-gcloud compute ssh encoding-worker-a --zone=us-central1-c --project=nomadkaraoke \
+# Check current wheel version (example: the GCE fallback in us-central1-f)
+gcloud compute ssh encoding-worker-fallback-c2df --zone=us-central1-f --project=nomadkaraoke \
   --command="curl -s http://localhost:8080/health | python3 -m json.tool"
 
 # Restart to pick up latest wheel
-gcloud compute ssh encoding-worker-a --zone=us-central1-c --project=nomadkaraoke \
+gcloud compute ssh encoding-worker-fallback-c2df --zone=us-central1-f --project=nomadkaraoke \
   --command="sudo systemctl restart encoding-worker"
 ```
 
@@ -626,7 +626,7 @@ gcloud compute ssh encoding-worker-b --zone=us-central1-c --project=nomadkaraoke
 
 **Background — what this state means:** GCE returned `ZONE_RESOURCE_POOL_EXHAUSTED` or transient `503 SERVICE_UNAVAILABLE` from `compute.instances.start` on every encoding-worker VM. The render worker parks the job in `RENDER_PENDING_CAPACITY` instead of failing it; Cloud Scheduler retries it every 10 min via `/api/internal/retry-pending-render-jobs`. Hard timeout is 24 hours (then transitions to `failed` with a clear permanent-failure message).
 
-Since 2026-09-26 the fleet is 3 VMs: **Spot** `c4d-highcpu-16` primaries (`encoding-worker-a`/`-b`) in `us-central1-c`, plus ONE stopped on-demand fallback `encoding-worker-fallback-c2df` (`c2d-highcpu-16`, `us-central1-f`). Candidates are tried **fastest-first with a 15-min capacity cooldown** — see `backend/services/encoding_worker_preference.py`. If both the Spot pair and the c2d fallback return stockout, that's a genuinely severe regional event — wait, or (re-)add a fallback in another family/zone to `EncodingWorkerConfig.FALLBACKS` **and** the `encoding-worker-fallback-vms` secret (the 2026-08-15 pool had 8 fallbacks across 6 families). NOTE: creating a *new* fallback VM needs a one-time boot allocation, so a deep enough crunch can even block provisioning.
+Since 2026-11 the fleet is the AWS worker plus ONE GCE VM (the c4d Spot pair `encoding-worker-a`/`-b` was deleted). Before that (2026-09-26) it was **Spot** `c4d-highcpu-16` primaries in `us-central1-c`, plus ONE stopped on-demand fallback `encoding-worker-fallback-c2df` (`c2d-highcpu-16`, `us-central1-f`). Candidates are tried **fastest-first with a 15-min capacity cooldown** — see `backend/services/encoding_worker_preference.py`. If both the Spot pair and the c2d fallback return stockout, that's a genuinely severe regional event — wait, or (re-)add a fallback in another family/zone to `EncodingWorkerConfig.FALLBACKS` **and** the `encoding-worker-fallback-vms` secret (the 2026-08-15 pool had 8 fallbacks across 6 families). NOTE: creating a *new* fallback VM needs a one-time boot allocation, so a deep enough crunch can even block provisioning.
 
 **Spot preemption mid-encode** is expected occasionally: the backend sees the pinned worker VM is TERMINATED/STOPPING, logs `Encoding worker VM stopped mid-job (... ) — likely Spot preemption`, and resubmits the encode as `<job>_retry_<hex>` (up to `ENCODING_RESUBMIT_MAX`, default 2). Repeated preemptions → the job fails with the lost-job error; check `gcloud compute operations list --filter="operationType=compute.instances.preempted"`.
 

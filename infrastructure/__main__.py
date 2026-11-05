@@ -756,11 +756,9 @@ if AUDIO_SEPARATOR_SERVICE_ENABLED:
 
 # ==================== Compute VMs ====================
 
-# Encoding Worker VMs (blue-green pair for zero-downtime deployments)
-encoding_worker_ips = encoding_worker_vm.create_encoding_worker_ips()
-encoding_worker_instances = encoding_worker_vm.create_encoding_worker_vms(
-    encoding_worker_ips, encoding_worker_sa
-)
+# The c4d Spot blue-green pair (encoding-worker-a/-b + static IPs) was retired
+# 2026-11: the AWS EC2 worker (infrastructure/aws/) is the preferred encoder and
+# runs distribution; the c2df VM below is the GCP fallback.
 
 # Capacity-fallback Encoding Worker VM — one ON-DEMAND VM in a different zone AND
 # machine family from the c4d Spot pair, so a Spot/c4d stockout can't take out
@@ -890,12 +888,6 @@ pulumi.export("recover_stuck_downloads_scheduler_name", recover_stuck_downloads_
 pulumi.export("disposable_domains_sync_scheduler_name", disposable_domains_sync_scheduler.name)
 pulumi.export("gdrive_validator_service_account", gdrive_validator_sa.email)
 
-# Encoding workers (blue-green pair)
-pulumi.export("encoding_worker_a_ip", encoding_worker_ips[0].address)
-pulumi.export("encoding_worker_b_ip", encoding_worker_ips[1].address)
-pulumi.export("encoding_worker_a_url", encoding_worker_ips[0].address.apply(lambda ip: f"http://{ip}:8080"))
-pulumi.export("encoding_worker_b_url", encoding_worker_ips[1].address.apply(lambda ip: f"http://{ip}:8080"))
-
 # Capacity-fallback VM exports (one per EncodingWorkerConfig.FALLBACKS entry,
 # keyed by suffix, e.g. encoding_worker_fallback_c2df_ip).
 for _fb, _fb_ip in zip(EncodingWorkerConfig.FALLBACKS, encoding_worker_fallback_ips):
@@ -905,8 +897,6 @@ for _fb, _fb_ip in zip(EncodingWorkerConfig.FALLBACKS, encoding_worker_fallback_
         _fb_ip.address.apply(lambda ip: f"http://{ip}:8080"),
     )
 pulumi.export("encoding_worker_service_account", encoding_worker_sa.email)
-pulumi.export("encoding_worker_a_name", encoding_worker_instances[0].name)
-pulumi.export("encoding_worker_b_name", encoding_worker_instances[1].name)
 
 # GitHub runners
 pulumi.export("github_runner_service_account", github_runner_sa.email)

@@ -38,11 +38,11 @@
         │ (jobs)   │  │ (files)  │  │  (API keys)  │ │  Worker (*)  │
         └──────────┘  └──────────┘  └──────────────┘ └──────────────┘
 
-(*) GCE Encoding Worker: a Spot c4d-highcpu-16 blue-green pair (AMD EPYC
-    Turin, the preferred pick) plus ONE on-demand c2d-highcpu-16 fallback in a
-    different zone for Spot/c4d stockouts (3 VMs since 2026-09-26 — see
-    docs/archive/2026-09-26-encoding-cost-cuts.md). Candidates are selected
-    fastest-first with a capacity cooldown.
+(*) Encoding Worker: since 2026-11 the AWS EC2 worker (aws-encoding-worker-1,
+    c7a.4xlarge, preferred via speed_rank_overrides) plus ONE on-demand GCE
+    c2d-highcpu-16 fallback (encoding-worker-fallback-c2df). The c4d Spot
+    blue-green pair was retired. Candidates are selected fastest-first with a
+    capacity cooldown.
     Used for both final video encoding and preview video generation.
     Uses immutable deployment pattern - see infrastructure/encoding-worker/README.md
     and the "Encoding Worker" section below.
@@ -468,6 +468,8 @@ karaoke-gen shares a GCP project (`nomadkaraoke`) with karaoke-decide, but uses 
 **Worker Logs**: Stored in subcollection (`jobs/{job_id}/logs`) instead of embedded array to avoid Firestore's 1MB document size limit. TTL policy auto-deletes logs after 30 days. Feature flag: `USE_LOG_SUBCOLLECTION` (default: true). See [LESSONS-LEARNED.md](LESSONS-LEARNED.md#firestore-document-1mb-limit-with-embedded-arrays).
 
 ## Encoding Worker: blue-green primary pair + multi-family fallback pool
+
+> **2026-11 update:** the c4d Spot pair (`encoding-worker-a`/`-b`) is **retired and deleted**. The preferred encoder (and distribution worker) is the AWS EC2 box `aws-encoding-worker-1`; the only GCE VM is the on-demand fallback `encoding-worker-fallback-c2df` (us-central1-f). `config/encoding-worker` keeps `primary_vm`/`secondary_vm` empty, so every selection path routes to a fallback and records it as `active_override_*`. CI blue-green deploys now just validate the new wheel on c2df and stop it again (the AWS override keeps serving); the worker-change gate diffs against `validated_version`. The pair-specific text below is historical.
 
 The GCE encoding worker is a **blue-green primary pair** (`encoding-worker-a`/`-b`,
 both **Spot** c4d-highcpu-16 in us-central1-c) plus **one on-demand fallback**

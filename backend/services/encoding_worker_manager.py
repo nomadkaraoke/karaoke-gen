@@ -120,7 +120,14 @@ class EncodingWorkerConfig:
     aws_video_worker: bool = False
 
     @property
+    def has_primary(self) -> bool:
+        """False once the GCE blue-green pair is retired (empty primary_vm)."""
+        return bool(self.primary_vm)
+
+    @property
     def primary_url(self) -> str:
+        if not self.primary_ip:
+            return ""
         return f"http://{self.primary_ip}:{ENCODING_WORKER_PORT}"
 
     @property
@@ -134,7 +141,8 @@ class EncodingWorkerConfig:
         Returns the capacity-fallback override if set, otherwise the primary
         URL. The override mechanism lets us route around a zone that's
         temporarily out of c4d (Spot) capacity without rewriting the
-        blue-green primary/secondary tracking.
+        blue-green primary/secondary tracking. Empty when neither is set (no
+        primary pair and no override yet); callers resolve a candidate then.
         """
         if self.active_override_ip:
             return f"http://{self.active_override_ip}:{ENCODING_WORKER_PORT}"
@@ -159,8 +167,11 @@ class EncodingWorkerCandidate:
     # True iff this candidate is the blue-green PRIMARY VM. The override routing
     # (set on fallback, clear on primary) keys off this flag, NOT list position —
     # the preference logic may rank a fallback ahead of a stocked-out primary, so
-    # "first candidate" is no longer synonymous with "primary".
-    is_primary: bool = False
+    # "first candidate" is no longer synonymous with "primary". None ⇒ unknown
+    # (hand-built lists): the legacy "index 0 is the primary" rule applies.
+    # ranked_candidates always sets True/False, so with no primary pair every
+    # candidate is a fallback and a successful start always sets the override.
+    is_primary: Optional[bool] = None
     # "aws" for the EC2 worker (routed to AwsComputeAdapter); None ⇒ GCE.
     provider: Optional[str] = None
 
@@ -282,14 +293,18 @@ class EncodingWorkerManager:
 
         config = config or self.get_config()
         primary_mt = getattr(config, "primary_machine_type", None) or PRIMARY_MACHINE_TYPE
-        pool = [{
-            "vm": config.primary_vm,
-            "zone": self._zone,
-            "ip": config.primary_ip,
-            "machine_type": primary_mt,
-            "kind": "primary",
-            "is_primary": True,
-        }]
+        pool = []
+        # No primary once the GCE c4d pair is retired (2026-11): the pool is then
+        # just the fallbacks (AWS worker + GCE c2df).
+        if config.primary_vm:
+            pool.append({
+                "vm": config.primary_vm,
+                "zone": self._zone,
+                "ip": config.primary_ip,
+                "machine_type": primary_mt,
+                "kind": "primary",
+                "is_primary": True,
+            })
         pool.extend(self.fallback_entries())
         ranked = ordered_candidates(
             pool,
@@ -302,7 +317,7 @@ class EncodingWorkerManager:
                 zone=c["zone"],
                 ip=c["ip"],
                 machine_type=c.get("machine_type"),
-                is_primary=c.get("is_primary", False),
+                is_primary=bool(c.get("is_primary", False)),
                 provider=c.get("provider"),
             )
             for c in ranked
@@ -320,8 +335,13 @@ class EncodingWorkerManager:
         """
         config = self.get_config()
         candidates = self.ranked_candidates(config)
-        if not candidates or candidates[0].is_primary:
+        if config.has_primary and (not candidates or candidates[0].is_primary):
             return self.ensure_primary_running()
+        if not candidates:
+            raise EncodingWorkerStartError(
+                "No encoding worker candidates configured (no primary, no fallbacks)",
+                vm_name="", zone="", code="NO_CANDIDATES",
+            )
         return self.ensure_any_running(candidates)
 
     def _doc_ref(self):
@@ -341,13 +361,15 @@ class EncodingWorkerManager:
                 f"{CONFIG_COLLECTION}/{CONFIG_DOCUMENT}"
             )
         data = snapshot.to_dict()
+        # The primary/secondary pair is optional: empty/absent once the GCE c4d
+        # pair is retired, leaving only the fallback pool (AWS + c2df).
         return EncodingWorkerConfig(
-            primary_vm=data["primary_vm"],
-            primary_ip=data["primary_ip"],
-            primary_version=data["primary_version"],
+            primary_vm=data.get("primary_vm") or "",
+            primary_ip=data.get("primary_ip") or "",
+            primary_version=data.get("primary_version") or "",
             primary_deployed_at=data.get("primary_deployed_at"),
-            secondary_vm=data["secondary_vm"],
-            secondary_ip=data["secondary_ip"],
+            secondary_vm=data.get("secondary_vm") or "",
+            secondary_ip=data.get("secondary_ip") or "",
             secondary_version=data.get("secondary_version"),
             secondary_deployed_at=data.get("secondary_deployed_at"),
             last_swap_at=data.get("last_swap_at"),
@@ -495,6 +517,16 @@ class EncodingWorkerManager:
             EncodingWorkerStartError: any other start failure.
         """
         config = self.get_config()
+        if not config.has_primary:
+            # No GCE primary pair: "the primary" is whichever ranked candidate
+            # starts (the AWS worker when preferred). Same contract as before.
+            candidates = self.ranked_candidates(config)
+            if not candidates:
+                raise EncodingWorkerStartError(
+                    "No encoding worker candidates configured (no primary, no fallbacks)",
+                    vm_name="", zone="", code="NO_CANDIDATES",
+                )
+            return self.ensure_any_running(candidates)
         vm_name = config.primary_vm
 
         status = self.get_vm_status(vm_name)
@@ -594,7 +626,9 @@ class EncodingWorkerManager:
         last_non_transient_error: Optional[EncodingWorkerStartError] = None
         # When the caller marks a primary explicitly, route override off that flag;
         # otherwise preserve the legacy "index 0 is the primary" behaviour.
-        has_explicit_primary = any(getattr(c, "is_primary", False) for c in candidates)
+        has_explicit_primary = any(
+            getattr(c, "is_primary", None) is not None for c in candidates
+        )
         for index, candidate in enumerate(candidates):
             try:
                 try:
@@ -645,7 +679,7 @@ class EncodingWorkerManager:
                 # explicit flag when present (ordering can rank a fallback ahead of
                 # a stocked-out primary, so it may not be index 0); otherwise the
                 # legacy position-based rule.
-                is_primary = candidate.is_primary if has_explicit_primary else (index == 0)
+                is_primary = bool(candidate.is_primary) if has_explicit_primary else (index == 0)
                 fell_back = not is_primary
                 if fell_back:
                     self._set_active_override(candidate)
@@ -798,6 +832,12 @@ class EncodingWorkerManager:
 
         vm = config.active_override_vm
         zone = config.active_override_zone
+        if not vm and not config.has_primary:
+            logger.warning(
+                "demote_active_worker: no override and no primary pair; nothing to demote (%s)",
+                reason,
+            )
+            return
         if not vm:
             # Primary pair was serving — see docstring; leave selection untouched.
             # Logged at ERROR so it alerts: on 2026-10-06 a primary that booted
@@ -810,7 +850,12 @@ class EncodingWorkerManager:
             )
             return
 
-        key = cooldown_key({"vm_name": vm, "zone": zone})
+        # Fallback entries carry machine_type (the AWS worker's name has no family
+        # token, so without it the AWS box could never be cooled down).
+        machine_type = next(
+            (e.get("machine_type") for e in self.fallback_entries() if e.get("vm") == vm), None
+        )
+        key = cooldown_key({"vm_name": vm, "zone": zone, "machine_type": machine_type})
         if key:
             try:
                 self._doc_ref().set(
@@ -824,6 +869,8 @@ class EncodingWorkerManager:
                 logger.warning(
                     "demote_active_worker: could not record cooldown for %s: %s", key, e
                 )
+        # With no primary pair, an empty override makes encoding_service resolve
+        # the top-ranked candidate, which the cooldown above now demotes.
         self._clear_active_override()
 
     # ------------------------------------------------------------------
