@@ -705,7 +705,7 @@ Audio can come from file upload or remote search (YouTube, torrents). All YouTub
   2026-09-26; the backend and `audio-download-job` / `bulk-search-job` have no VPC egress, so every
   dependency they call must be reachable on a public address.
 - `FLACFETCH_API_KEY` - API key for authentication
-- `TORNADO_API_KEY` - TornadoAPI key (secret `tornado-api-key`). When set, YouTube downloads and availability checks try Tornado first and fall back to flacfetch: WARNING per failed download, ERROR if the account is rejected. CI wires the secret once it has a version. It covers downloads only, so YouTube search still uses flacfetch's cookies.
+- `TORNADO_API_KEY` - TornadoAPI key (secret `tornado-api-key`). When set, YouTube downloads and availability checks try Tornado first and fall back to flacfetch: WARNING per failed download, ERROR if the account is rejected. The secret was created by hand (not in `secrets.py`). CI wires it on the API service once it has a version; Pulumi wires it on `audio-download-job`, which does most YouTube downloads. It covers downloads only, so YouTube search still uses flacfetch's cookies.
 - `YOUTUBE_DOWNLOAD_PROVIDER` - set to `flacfetch` to switch Tornado off, e.g. `gcloud run services update karaoke-backend --update-env-vars YOUTUBE_DOWNLOAD_PROVIDER=flacfetch` (default `tornado`; the next CI deploy resets it, so also change the workflow to make it permanent).
 
 ## Worker Execution
