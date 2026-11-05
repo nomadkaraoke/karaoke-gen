@@ -575,6 +575,24 @@ class TestRunnerManagerNoAvailableInstance:
         assert result is not None
         assert result.pattern_name == "runner_manager_no_available_instance"
 
+    WAITED_MSG = (
+        "The request was aborted after waiting too long for an available instance. "
+        "Additional troubleshooting documentation can be found at: "
+        "https://cloud.google.com/run/docs/troubleshooting#abort-request"
+    )
+
+    def test_waited_too_long_wording_ignored_for_runner_manager(self):
+        from backend.services.error_monitor.known_issues import should_ignore
+
+        result = should_ignore("github-runner-manager", self.WAITED_MSG)
+        assert result is not None
+        assert result.pattern_name == "runner_manager_no_available_instance"
+
+    def test_waited_too_long_wording_still_alerts_for_customer_service(self):
+        from backend.services.error_monitor.known_issues import should_ignore
+
+        assert should_ignore("karaoke-backend", self.WAITED_MSG) is None
+
     def test_still_alerts_for_other_services(self):
         # On the customer-facing backend the same abort means dropped requests.
         from backend.services.error_monitor.known_issues import should_ignore

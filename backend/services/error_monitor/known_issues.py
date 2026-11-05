@@ -123,12 +123,14 @@ _SERVICE_IGNORE_PATTERNS: list[tuple[str, frozenset[str], re.Pattern, str]] = [
         "runner_manager_no_available_instance",
         frozenset({"github-runner-manager"}),
         re.compile(
-            r"request was aborted because there was no available instance",
+            r"request was aborted (because there was no available instance"
+            r"|after waiting too long for an available instance)",
             re.IGNORECASE,
         ),
         "github-runner-manager scale-up burst: Cloud Run aborts webhook requests "
-        "while instances start, GitHub redelivers and the runners still dispatch "
-        "(seen 2026-09-20, 09-23, 09-27, 10-08)",
+        "while instances start. GitHub does not redeliver them; the 5-minute "
+        "redispatch_stalled_jobs tick launches a runner for any job left queued "
+        "(seen 2026-09-20, 09-23, 09-27, 10-08, 11-04)",
     ),
     (
         "audio_separation_experiment_traceback",
