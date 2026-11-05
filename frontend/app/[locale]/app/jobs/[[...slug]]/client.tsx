@@ -494,6 +494,13 @@ function LyricsReviewWrapper({ job, isLocalMode = false, isReplay = false }: { j
 
       {isReplay && <ReplayNavBar jobId={job.job_id} screen="review" />}
       {isReplay && (
+        <ReplaySyncVerdict
+          key={job.job_id}
+          jobId={job.job_id}
+          saved={correctionData.sync_reference ?? null}
+        />
+      )}
+      {isReplay && (
         <ReplayActionLog
           editLog={correctionData.replay?.edit_log ?? null}
           instrumentalSelection={correctionData.replay?.instrumental_selection ?? null}
@@ -573,6 +580,107 @@ function ReplayNavBar({ jobId, screen }: { jobId: string; screen: "review" | "in
         )}
         <button className={navCls(!!next)} disabled={!next} onClick={() => next && go(next, "review")}>Next job →</button>
       </div>
+    </div>
+  )
+}
+
+const SYNC_NOT_REASONS = [
+  "didn't really check it",
+  "timing off in places",
+  "lyrics errors",
+  "vocalization section approximate",
+  "missing ad-libs / backing lines",
+  "audio/separation issue",
+  "other",
+]
+
+/**
+ * ReplaySyncVerdict — triage for the word-timing reference set (full-auto v2). While
+ * replaying a completed job, mark it "perfectly synced" (a confident spot-check is
+ * enough) or not, with reasons/notes. Saves to state_data.sync_reference via the same
+ * admin endpoint as the review-modal checkbox, then moves to the next queued job.
+ * Internal admin tool (English-only, like the rest of replay).
+ */
+export function ReplaySyncVerdict({
+  jobId,
+  saved,
+}: {
+  jobId: string
+  saved: { verified: boolean; by?: string; at?: string; notes?: string | null; reasons?: string[] | null } | null
+}) {
+  const [choice, setChoice] = useState<"synced" | "not" | null>(
+    saved ? (saved.verified ? "synced" : "not") : null
+  )
+  const [reasons, setReasons] = useState<string[]>(saved?.reasons ?? [])
+  const [notes, setNotes] = useState(saved?.notes ?? "")
+  const [status, setStatus] = useState<string>(
+    saved ? `Saved: ${saved.verified ? "perfectly synced" : "not perfect"}${saved.at ? ` · ${saved.at.slice(0, 16).replace("T", " ")}` : ""}` : "Not triaged yet"
+  )
+  const [busy, setBusy] = useState(false)
+  const markDirty = () => setStatus("Unsaved changes")
+
+  const nextJob = () => {
+    const queue = new URLSearchParams(window.location.search).get("queue")?.split(",").map((x) => x.trim()).filter(Boolean) ?? []
+    const i = queue.indexOf(jobId)
+    return i >= 0 && i < queue.length - 1 ? queue[i + 1] : null
+  }
+
+  const save = async (advance: boolean) => {
+    if (!choice || busy) return
+    setBusy(true)
+    try {
+      await createLyricsReviewApiClient(jobId).setSyncReference!(
+        choice === "synced",
+        notes.trim() || undefined,
+        choice === "not" ? reasons : undefined
+      )
+      setStatus(`Saved: ${choice === "synced" ? "perfectly synced" : "not perfect"}`)
+      const n = advance ? nextJob() : null
+      if (n) window.location.hash = `#/${n}/review`
+    } catch (e) {
+      setStatus(`Save failed: ${e instanceof Error ? e.message : String(e)}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const pill = (active: boolean, tone: "good" | "bad") =>
+    `px-3 py-1 rounded text-sm font-medium border ${
+      active
+        ? tone === "good" ? "bg-green-600 text-white border-green-600" : "bg-red-600 text-white border-red-600"
+        : "hover:bg-muted"
+    }`
+
+  return (
+    <div className="mx-4 mt-2 rounded-lg border bg-card px-3 py-2 space-y-2" data-testid="replay-sync-verdict">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs text-muted-foreground mr-1">Reference set:</span>
+        <button className={pill(choice === "synced", "good")} onClick={() => { setChoice("synced"); markDirty() }}>Perfectly synced</button>
+        <button className={pill(choice === "not", "bad")} onClick={() => { setChoice("not"); markDirty() }}>Not perfect</button>
+        <input
+          className="flex-1 min-w-[12rem] rounded border bg-background px-2 py-1 text-sm"
+          placeholder="Notes (optional)"
+          value={notes}
+          onChange={(e) => { setNotes(e.target.value); markDirty() }}
+        />
+        <button className="px-3 py-1 rounded text-sm font-medium border hover:bg-muted" disabled={!choice || busy} onClick={() => save(false)}>Save</button>
+        <button className="px-3 py-1 rounded text-sm font-medium bg-primary text-primary-foreground disabled:opacity-40" disabled={!choice || busy} onClick={() => save(true)}>Save & next job →</button>
+        <span className="text-xs text-muted-foreground" data-testid="replay-sync-status">{status}</span>
+      </div>
+      {choice === "not" && (
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
+          {SYNC_NOT_REASONS.map((r) => (
+            <label key={r} className="text-xs text-muted-foreground flex items-center gap-1">
+              <input
+                type="checkbox"
+                checked={reasons.includes(r)}
+                onChange={(e) => { setReasons(e.target.checked ? [...reasons, r] : reasons.filter((x) => x !== r)); markDirty() }}
+              />
+              {r}
+            </label>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
