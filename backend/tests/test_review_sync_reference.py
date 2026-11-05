@@ -101,3 +101,42 @@ def test_verified_accepts_direct_path_file(client, jm):
         r = client.post("/api/review/j1/sync-reference", json={"verified": True})
     assert r.status_code == 200
     st.return_value.file_exists.assert_called_with("jobs/j1/lyrics/corrections_updated.json")
+
+
+def test_reasons_stored_trimmed_and_capped(client, jm):
+    reasons = ["timing off in places", "  lyrics errors ", ""] + [f"r{i}" for i in range(20)]
+    client.post("/api/review/j1/sync-reference", json={"verified": False, "reasons": reasons})
+    stored = jm.update_state_data.call_args.args[2]["reasons"]
+    assert stored[:2] == ["timing off in places", "lyrics errors"]
+    assert len(stored) == 10
+
+
+# --- vocal waveform for old (stems-purged) jobs falls back to the backfilled lead stem ---
+
+def _job(stems=None, purged=None):
+    j = MagicMock()
+    j.job_id = "j1"
+    j.file_urls = {"stems": stems or {}}
+    j.stems_purged_at = purged
+    return j
+
+
+def test_review_vocals_path_prefers_registered_stem():
+    from backend.api.routes.review import _review_vocals_path
+    assert _review_vocals_path(_job({"vocals_clean": "jobs/j1/stems/vocals_clean.flac"})) == "jobs/j1/stems/vocals_clean.flac"
+
+
+def test_review_vocals_path_purged_job_uses_training_copy():
+    from backend.api.routes.review import _review_vocals_path
+    with patch("backend.api.routes.review.StorageService") as st:
+        st.return_value.file_exists.return_value = True
+        assert _review_vocals_path(_job(purged="2026-10-05")) == "training/lead_vocals/j1.flac"
+        st.return_value.file_exists.return_value = False
+        assert _review_vocals_path(_job(purged="2026-10-05")) is None
+
+
+def test_review_vocals_path_unpurged_job_never_checks_training():
+    from backend.api.routes.review import _review_vocals_path
+    with patch("backend.api.routes.review.StorageService") as st:
+        assert _review_vocals_path(_job()) is None
+        st.assert_not_called()
