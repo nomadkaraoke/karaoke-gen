@@ -605,7 +605,10 @@ class TestRedispatchStalledJobs:
         create.assert_not_called()
         assert result["given_up"] == [1]
         # Giving up means the safety net failed: it must reach the error monitor.
-        assert any("Not re-dispatching" in m for m in _error_messages(capsys.readouterr().out))
+        errors = [m for m in _error_messages(capsys.readouterr().out) if "Not re-dispatching" in m]
+        assert errors
+        # No live queue age in the text, so repeat ticks group into one alert pattern.
+        assert all("give-up limit" in m and "90min" not in m for m in errors)
 
     def test_idle_registered_runner_covers_the_stalled_job(self):
         ep = _fresh_module()

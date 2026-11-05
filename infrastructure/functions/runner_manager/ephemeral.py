@@ -859,7 +859,11 @@ def redispatch_stalled_jobs(
         if age >= REDISPATCH_GIVE_UP_MINUTES:
             # Excluded from demand too, so a job we've abandoned doesn't make
             # every later stalled job in its family look under-supplied.
-            _log_error(f"Not re-dispatching {job['repo']} job {job.get('id')}: queued {age:.0f}min (> give-up)")
+            # Fixed text (no live age) so every tick groups into one error pattern.
+            _log_error(
+                f"Not re-dispatching {job['repo']} job {job.get('id')}: "
+                f"queued longer than the {REDISPATCH_GIVE_UP_MINUTES}min give-up limit"
+            )
             result["given_up"].append(job.get("id"))
             continue
         demand[family] = demand.get(family, 0) + 1
