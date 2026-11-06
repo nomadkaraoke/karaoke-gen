@@ -130,6 +130,13 @@ def promote_plan(
         serving worker). Leave primary/secondary untouched so c4d resumes as
         primary when capacity returns. Drain+stop the previous override (if any,
         and different from the green).
+      * green.kind == "fallback" while the AWS worker is the serving override:
+        the green was only a validation target. Keep the AWS override serving,
+        record the validated version, and stop the green (it served nothing).
+
+    Every successful promote records ``validated_version``: the version the CI
+    worker-change gate diffs against. ``primary_version`` alone stops moving
+    once the c4d pair is retired (2026-11).
     """
     drain: List[Dict[str, Optional[str]]] = []
 
@@ -149,6 +156,7 @@ def promote_plan(
             "secondary_ip": config.get("primary_ip"),
             "secondary_version": config.get("primary_version"),
             "secondary_deployed_at": now,
+            "validated_version": version,
             "last_swap_at": now,
             "deploy_in_progress": False,
             "deploy_in_progress_since": None,
@@ -179,6 +187,18 @@ def promote_plan(
             })
         return _finalize(updates)
 
+    if _is_aws_override(config):
+        # The AWS worker serves by preference and hot-updates its wheel per job;
+        # a GCE fallback green must not displace it. It was validated only.
+        return {
+            "firestore_updates": {
+                "validated_version": version,
+                "deploy_in_progress": False,
+                "deploy_in_progress_since": None,
+            },
+            "drain_and_stop": [{"vm": green["vm"], "ip": green.get("ip"), "zone": green.get("zone")}],
+        }
+
     # kind == "fallback": the green becomes the serving override.
     updates = {
         "active_override_vm": green["vm"],
@@ -189,6 +209,7 @@ def promote_plan(
         # The green is a GCE VM: never leave a stale "aws" tag on it (CI hides
         # an AWS override from this flow, so it may be the override replaced).
         "active_override_provider": None,
+        "validated_version": version,
         "deploy_in_progress": False,
         "deploy_in_progress_since": None,
     }

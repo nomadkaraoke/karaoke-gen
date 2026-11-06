@@ -10,30 +10,18 @@ Run locally with: `pytest infrastructure/test_encoding_worker_config.py`
 resource graph via `pulumi preview`).
 """
 
-from config import ENCODING_WORKER_ZONE, EncodingWorkerConfig, MachineTypes
+from config import EncodingWorkerConfig, MachineTypes
 
 
-def test_fallback_is_a_different_machine_family_and_zone_from_primary():
-    """The on-demand fallback must not share the Spot pair's family or zone,
-    otherwise a single c4d / Spot / zone stockout takes out every lane at once
-    (incident 2026-08-12)."""
-    assert EncodingWorkerConfig.FALLBACKS, "need at least one capacity fallback"
-    primary_family = _family(MachineTypes.ENCODING_WORKER)
-    primary_zone_suffix = ENCODING_WORKER_ZONE.rsplit("-", 1)[1]
-    for fb in EncodingWorkerConfig.FALLBACKS:
-        assert _family(fb["machine_type"]) != primary_family, fb
-        assert fb["zone_suffix"] != primary_zone_suffix, fb
-
-
-def test_fleet_is_cost_cut_shape():
-    """2026-09-26 cost cut: Spot a/b pair + exactly one on-demand fallback, all
-    16 vCPU. Growing this again should be a deliberate decision (update the
-    fallback secret + docs), not an accident."""
-    assert len(EncodingWorkerConfig.VM_NAMES) == 2
+def test_fleet_is_single_on_demand_fallback():
+    """Since 2026-11 the GCE fleet is ONE on-demand fallback (c2df): the c4d Spot
+    a/b pair was retired for the AWS EC2 worker. Growing this again should be a
+    deliberate decision (update the fallback secret + docs), not an accident."""
+    assert not hasattr(EncodingWorkerConfig, "VM_NAMES")
+    assert not hasattr(MachineTypes, "ENCODING_WORKER")
     assert len(EncodingWorkerConfig.FALLBACKS) == 1
-    assert EncodingWorkerConfig.PRIMARY_PAIR_SPOT is True
-    for mt in [MachineTypes.ENCODING_WORKER] + [fb["machine_type"] for fb in EncodingWorkerConfig.FALLBACKS]:
-        assert mt.endswith("-16"), mt
+    for fb in EncodingWorkerConfig.FALLBACKS:
+        assert fb["machine_type"].endswith("-16"), fb
 
 
 def test_idle_shutdown_is_fast_but_outlives_review_heartbeat():

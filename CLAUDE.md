@@ -151,21 +151,22 @@ EOF
 ```
 
 ### GCE Encoding Worker
-The worker is a **Spot** c4d-highcpu-16 blue-green primary pair (`encoding-worker-a`/`-b`,
-us-central1-c) plus ONE stopped on-demand fallback (`encoding-worker-fallback-c2df`,
-c2d-highcpu-16, us-central1-f) — 3 VMs since 2026-09-26. Idle VMs stop after 5 min.
-CI blue-green redeploys the worker only when worker code changed
-(`infrastructure/encoding-worker/worker_code_paths.txt`); force it via Actions → CI →
-Run workflow → "Force a blue-green redeploy of the GCE encoding worker". The currently-serving
-VM is `active_override_vm` in `config/encoding-worker` if set, else `primary_vm`.
-Use that VM name + its zone below (there is no VM literally named `encoding-worker`):
+Since 2026-11 the only GCE encoding VM is the stopped on-demand fallback
+`encoding-worker-fallback-c2df` (c2d-highcpu-16, us-central1-f); the c4d Spot pair
+(`encoding-worker-a`/`-b`) was retired and deleted, and `primary_vm`/`secondary_vm` in
+`config/encoding-worker` are empty. The serving worker is `active_override_vm` (normally the
+AWS box below). Idle VMs stop after 5 min. CI's "blue-green" deploy now only runs when worker
+code changed (`infrastructure/encoding-worker/worker_code_paths.txt`, diffed against
+`validated_version`): it boots c2df, runs a test encode, records `validated_version` and stops
+it again, leaving the AWS override serving. Force it via Actions → CI → Run workflow →
+"Force a blue-green redeploy of the GCE encoding worker".
 ```bash
-# Check health (includes wheel_version). Example uses the primary pair's VM.
-gcloud compute ssh encoding-worker-a --zone=us-central1-c --project=nomadkaraoke \
+# Check health (includes wheel_version) on the GCE fallback.
+gcloud compute ssh encoding-worker-fallback-c2df --zone=us-central1-f --project=nomadkaraoke \
   --command="curl -s http://localhost:8080/health"
 
 # Restart the service (pick up new worker-side code after a deploy)
-gcloud compute ssh encoding-worker-a --zone=us-central1-c --project=nomadkaraoke \
+gcloud compute ssh encoding-worker-fallback-c2df --zone=us-central1-f --project=nomadkaraoke \
   --command="sudo systemctl restart encoding-worker"
 ```
 
