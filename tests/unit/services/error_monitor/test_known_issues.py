@@ -558,34 +558,50 @@ class TestCaseInsensitiveMatching:
 
 
 class TestRunnerManagerNoAvailableInstance:
-    """github-runner-manager's Cloud Run 'no available instance' abort is a burst
-    during runner scale-up; the runners still dispatch (seen 09-20, 09-23, 09-27,
-    10-08), so it must not page."""
+    """github-runner-manager's Cloud Run abort is a burst during runner scale-up; the
+    stalled-job tick still dispatches the runners (seen 09-20, 09-23, 09-27, 10-08,
+    11-04), so a webhook abort must not page. A scheduler-tick abort still alerts:
+    that tick is the safety net."""
 
     MSG = (
         "The request was aborted because there was no available instance. "
         "Additional troubleshooting documentation can be found at: "
         "https://cloud.google.com/run/docs/troubleshooting#abort-request"
     )
+    WAITED_MSG = (
+        "The request was aborted after waiting too long for an available instance. "
+        "Additional troubleshooting documentation can be found at: "
+        "https://cloud.google.com/run/docs/troubleshooting#abort-request"
+    )
+    WEBHOOK = "https://us-central1-nomadkaraoke.cloudfunctions.net/github-runner-manager"
+    SCHEDULER = WEBHOOK + "?action=check_idle"
 
-    def test_ignored_for_runner_manager(self):
+    @pytest.mark.parametrize("msg", [MSG, WAITED_MSG])
+    def test_webhook_abort_ignored(self, msg):
         from backend.services.error_monitor.known_issues import should_ignore
 
-        result = should_ignore("github-runner-manager", self.MSG)
+        result = should_ignore("github-runner-manager", msg, self.WEBHOOK)
         assert result is not None
         assert result.pattern_name == "runner_manager_no_available_instance"
 
-    def test_still_alerts_for_other_services(self):
+    @pytest.mark.parametrize("msg", [MSG, WAITED_MSG])
+    def test_scheduler_tick_abort_still_alerts(self, msg):
+        from backend.services.error_monitor.known_issues import should_ignore
+
+        assert should_ignore("github-runner-manager", msg, self.SCHEDULER) is None
+
+    @pytest.mark.parametrize("msg", [MSG, WAITED_MSG])
+    def test_no_url_still_alerts(self, msg):
+        from backend.services.error_monitor.known_issues import should_ignore
+
+        assert should_ignore("github-runner-manager", msg) is None
+
+    @pytest.mark.parametrize("msg", [MSG, WAITED_MSG])
+    def test_still_alerts_for_other_services(self, msg):
         # On the customer-facing backend the same abort means dropped requests.
         from backend.services.error_monitor.known_issues import should_ignore
 
-        assert should_ignore("karaoke-backend", self.MSG) is None
-
-    def test_other_runner_manager_errors_still_alert(self):
-        from backend.services.error_monitor.known_issues import should_ignore
-
-        assert should_ignore("github-runner-manager", "Failed to create runner VM: quota exceeded") is None
-
+        assert should_ignore("karaoke-backend", msg, "https://api.nomadkaraoke.com/github-runner-manager") is None
 
 class TestAudioSeparationExperimentTracebacks:
     """Ad-hoc `python -c` experiments on prod job images (2026-10-31, 11-01) are not

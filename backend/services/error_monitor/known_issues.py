@@ -14,8 +14,9 @@ Usage:
 """
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
-from urllib.parse import urlsplit
+from urllib.parse import SplitResult, urlsplit
 
 
 @dataclass
@@ -120,17 +121,6 @@ _IGNORE_PATTERNS: list[tuple[str, re.Pattern, str]] = [
 # customer-facing service is a real problem. (pattern_name, services, regex, reason)
 _SERVICE_IGNORE_PATTERNS: list[tuple[str, frozenset[str], re.Pattern, str]] = [
     (
-        "runner_manager_no_available_instance",
-        frozenset({"github-runner-manager"}),
-        re.compile(
-            r"request was aborted because there was no available instance",
-            re.IGNORECASE,
-        ),
-        "github-runner-manager scale-up burst: Cloud Run aborts webhook requests "
-        "while instances start, GitHub redelivers and the runners still dispatch "
-        "(seen 2026-09-20, 09-23, 09-27, 10-08)",
-    ),
-    (
         "audio_separation_experiment_traceback",
         frozenset({"audio-separation-job"}),
         # Two consecutive <string> frames: `python -c` running exec'd code, i.e. an
@@ -151,9 +141,33 @@ _SERVICE_IGNORE_PATTERNS: list[tuple[str, frozenset[str], re.Pattern, str]] = [
 ]
 
 
-# Noise only for one service AND request URL path (Cloud Run request logs carry the
-# URL outside the message). (pattern_name, services, message regex, exact URL path, reason)
-_SERVICE_URL_IGNORE_PATTERNS: list[tuple[str, frozenset[str], re.Pattern, str, str]] = [
+def _is_runner_manager_webhook(url: SplitResult) -> bool:
+    """GitHub webhooks hit the bare function URL; Cloud Scheduler ticks add ``?action=``."""
+    return url.path == "/github-runner-manager" and not url.query
+
+
+# Noise only for one service AND request URL (Cloud Run request logs carry the URL
+# outside the message). The URL matcher is an exact path, or a predicate on the split
+# URL when the path alone can't tell requests apart.
+# (pattern_name, services, message regex, URL path or predicate, reason)
+_SERVICE_URL_IGNORE_PATTERNS: list[
+    tuple[str, frozenset[str], re.Pattern, str | Callable[[SplitResult], bool], str]
+] = [
+    (
+        "runner_manager_no_available_instance",
+        frozenset({"github-runner-manager"}),
+        re.compile(
+            r"request was aborted (because there was no available instance"
+            r"|after waiting too long for an available instance)",
+            re.IGNORECASE,
+        ),
+        _is_runner_manager_webhook,
+        "github-runner-manager scale-up burst: Cloud Run aborts webhook requests "
+        "while instances start. GitHub does not redeliver them; the 5-minute "
+        "redispatch_stalled_jobs tick launches a runner for any job left queued "
+        "(seen 2026-09-20, 09-23, 09-27, 10-08, 11-04). Scheduler ticks are not "
+        "ignored: a failed tick means that safety net didn't run.",
+    ),
     (
         "decide_search_health_abort",
         frozenset({"karaoke-decide-search"}),
@@ -196,9 +210,10 @@ def should_ignore(service: str, message: str, request_url: str | None = None) ->
             return IgnoreReason(pattern_name=pattern_name, reason=reason)
 
     if request_url:
-        url_path = urlsplit(request_url).path
-        for pattern_name, services, pattern, path, reason in _SERVICE_URL_IGNORE_PATTERNS:
-            if service in services and url_path == path and pattern.search(message):
+        url = urlsplit(request_url)
+        for pattern_name, services, pattern, url_match, reason in _SERVICE_URL_IGNORE_PATTERNS:
+            url_ok = url_match(url) if callable(url_match) else url.path == url_match
+            if service in services and url_ok and pattern.search(message):
                 return IgnoreReason(pattern_name=pattern_name, reason=reason)
 
     return None
