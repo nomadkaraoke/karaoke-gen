@@ -53,10 +53,17 @@ def test_ambiguous_keeps_up_to_four_alternatives():
     assert v["kind"] == "ambiguous" and len(v["alternatives"]) == 4
 
 
+async def _no_spotify(q):
+    return None
+
+
 # ---- resolve_and_tidy: AI split → the job flow's judge_match catalog pass
 
-def _tidy(query, ai, judge_result=None, judge_exc=None):
+def _tidy(query, ai, judge_result=None, judge_exc=None, live=None):
     seen = []
+
+    async def spotify(q):
+        return live
 
     async def gen(model, system_prompt, user_prompt):
         return ai
@@ -66,7 +73,7 @@ def _tidy(query, ai, judge_result=None, judge_exc=None):
         if judge_exc:
             raise judge_exc
         return judge_result
-    v = asyncio.run(resolve_and_tidy(query, generate=gen, judge=judge, model="m"))
+    v = asyncio.run(resolve_and_tidy(query, generate=gen, judge=judge, model="m", spotify=spotify))
     return v, seen
 
 
@@ -125,6 +132,87 @@ def test_no_catalog_match_keeps_ai_verdict(judge_result, judge_exc):
     assert v["engine"] == "ai" and v["canonical_title"] == "Push Up on Me"
     # A failed catalog pass is transient — the route must not cache it.
     assert (v["reason"] == "unavailable") is (judge_exc is not None)
+    # Grounding: a check that ran and found nothing makes the AI answer unconfirmed;
+    # a check that never ran (decide down) leaves it as it was.
+    assert v["confident"] is (judge_exc is not None)
+
+
+# ---- live Spotify (2026-11-06: "Cole Phillips – Roll of Dice" became "Roll of the Dice")
+
+_COLE = [{"artist_name": "Cole Phillips", "track_name": "Roll of Dice"},
+         {"artist_name": "Bruce Springsteen", "track_name": "Roll of the Dice"}]
+
+
+def test_live_spotify_exact_answers_without_gemini():
+    v, seen = _tidy("Roll of dice Cole Phillips", None, live=_COLE)   # ai=None: Gemini must not matter
+    assert v["kind"] == "cosmetic" and v["confident"] is True and v["engine"] == "catalog"
+    assert (v["canonical_artist"], v["canonical_title"]) == ("Cole Phillips", "Roll of Dice")
+    assert (v["typed_artist"], v["typed_title"]) == ("Cole Phillips", "Roll of dice")
+    assert seen == []
+
+
+def test_live_spotify_exact_artist_first():
+    v, _ = _tidy("cole phillips roll of dice", None, live=_COLE)
+    assert (v["typed_artist"], v["typed_title"]) == ("cole phillips", "roll of dice")
+    assert v["canonical_title"] == "Roll of Dice"
+
+
+def test_unconfirmed_ai_correction_is_not_confident():
+    """The incident: Gemini 'corrects' to a more familiar title no source has for this artist."""
+    ai = {"kind": "content", "confident": True, "typed_artist": "Cole Philips",
+          "typed_title": "Roll of dice", "canonical_artist": "Cole Phillips",
+          "canonical_title": "Roll of the Dice"}
+    inconclusive = MatchVerdict("none", False, "Cole Phillips", "Roll of the Dice",
+                                engine="catalog", needs_ai=True)
+    v, _ = _tidy("Roll of dice Cole Philips", ai, inconclusive, live=[])
+    assert v["kind"] == "content" and v["confident"] is False
+    assert "unconfirmed" in v["reason"]
+
+
+def test_ai_pick_from_live_results_is_kept():
+    ai = {"kind": "content", "confident": True, "typed_artist": "Cole Philips",
+          "typed_title": "Roll of dice", "canonical_artist": "Cole Phillips",
+          "canonical_title": "Roll of Dice"}
+    inconclusive = MatchVerdict("none", False, "Cole Phillips", "Roll of Dice",
+                                engine="catalog", needs_ai=True)
+    v, _ = _tidy("Roll of dice Cole Philips", ai, inconclusive, live=_COLE)
+    assert v["confident"] is True and v["canonical_title"] == "Roll of Dice"
+
+
+def test_live_results_are_handed_to_gemini():
+    prompts = []
+
+    async def gen(model, system_prompt, user_prompt):
+        prompts.append(user_prompt)
+        return {"kind": "none", "confident": False}
+
+    async def spotify(q):
+        return _COLE
+
+    asyncio.run(resolve_and_tidy("Roll of dice Cole Philips", generate=gen, model="m", spotify=spotify))
+    assert "Live Spotify search results" in prompts[0]
+    assert "- Cole Phillips — Roll of Dice" in prompts[0]
+
+
+def test_live_spotify_failure_falls_back_to_gemini(monkeypatch):
+    import backend.services.match_judge.free_text as ft
+    monkeypatch.setattr(ft, "SPOTIFY_TIMEOUT_S", 0.05)
+    prompts = []
+
+    async def gen(model, system_prompt, user_prompt):
+        prompts.append(user_prompt)
+        return {"kind": "none", "confident": False}
+
+    async def slow(q):
+        await asyncio.sleep(1)
+
+    async def broken(q):
+        raise RuntimeError("decide down")
+
+    for spotify in (slow, broken):
+        v = asyncio.run(resolve_and_tidy("some query", generate=gen, model="m", spotify=spotify))
+        assert v["kind"] == "none"
+    assert prompts == ['Singer typed: "some query"'] * 2
 
 
 def test_ambiguous_and_failures_skip_the_catalog():
@@ -208,7 +296,8 @@ def test_slow_catalog_tidy_answers_with_ai_verdict_and_keeps_searching(monkeypat
         return MatchVerdict("cosmetic", True, "Céline Dion", "My Heart Will Go On", engine="catalog")
 
     async def main():
-        v = await resolve_and_tidy("song from titanic", generate=gen, judge=judge, model="m")
+        v = await resolve_and_tidy("song from titanic", generate=gen, judge=judge, model="m",
+                                   spotify=_no_spotify)
         assert finished == []                 # answered before the catalog search finished
         await asyncio.sleep(0.3)              # ...which kept running in the background
         return v

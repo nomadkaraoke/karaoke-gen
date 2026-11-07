@@ -6,6 +6,23 @@ Key insights for future AI agents working on this codebase.
 
 ---
 
+
+## An AI "correction" nothing can confirm is a guess: ground it in real data (Nov 2026, v0.294.0)
+
+At a live kjbox night a singer typed "Cole Phillips – Roll of Dice", a 2025 release missing from the
+July 2025 Spotify snapshot, from MusicBrainz and from KaraokeNerds. Gemini "corrected" it to the
+more familiar phrase "Roll of the Dice", and `resolve_and_tidy` shipped that as confident:
+"No catalog match → AI verdict unchanged". After the singer tapped "keep what I typed", the make
+wizard's full judge did it again. The job came out titled wrong (`f01c9997`) even though the audio
+search had found the real track on Spotify at score 1.0.
+
+The LLM is weakest exactly where our data is thinnest: new releases and small artists. So silence
+from the catalogue is not evidence for the AI's answer. Fix: a live Spotify search (decide partner
+route, client-credentials, cached, 429 circuit breaker) confirms the typed song before Gemini. Any
+AI correction must name a song the catalogue or Spotify actually has, otherwise it is
+`confident: false` (offered, never applied). When a real data source is cheap and fresh, ask it
+before asking a model, and check what the model says against it.
+
 ## A lazy import on the loop can stall it for 15s: the image had no precompiled bytecode (Oct 2026, v0.282.1)
 
 The hourly `process-stale-reviews` cron stalled the API loop 10–15s, 4 times in 2 days. The culprit was `internal.py:670`: a lazy `from backend.services.conversion_emails import ...` inside an `async def`. The stall stack ended in `importlib … _write_atomic`. The backend Dockerfile never ran `compileall`, so the first import on each instance compiled the module and wrote a `.pyc` on the event loop, on a CPU-throttled instance.

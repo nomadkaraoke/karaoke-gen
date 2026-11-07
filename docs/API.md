@@ -1093,6 +1093,21 @@ the AI layer with `MATCH_JUDGE_ENABLED=false` (deterministic+catalog still run).
 > is designing an on-device typo-tolerant matcher that uses Gemini only as a fallback. Read
 > `kjbox/docs/SONG-IDENTIFICATION.md` before reusing this judge for free-text search.
 
+**Live Spotify + grounding (v0.294.0).** When the catalogue can't confirm the typed song, the judge
+(both stages) runs a live Spotify search through decide's partner route
+(`GET /api/partner/gen/spotify-search`, `X-Partner-Secret`, via
+`catalog_proxy_service.spotify_search`). The catalogue is a July 2025 snapshot, so new releases are
+missing from it.
+- An exact match after normalisation is a confident `catalog` verdict with reason
+  "… (live Spotify)" and **no Gemini call**. Example: "Cole Phillips" / "Roll of dice" → "Roll of Dice".
+- Gemini also gets the Spotify results as candidates.
+- **Grounding rule:** a confident AI `cosmetic` / `content` verdict must name a song that is in the
+  candidates or in one more Spotify lookup of the AI's song. Otherwise it comes back
+  `confident: false` with reason "… [unconfirmed: not in catalog or Spotify]". Clients show that as
+  "Did you mean…?" and never apply it.
+- Spotify unavailable means no evidence, so AI corrections aren't confident. That is conservative on
+  purpose. Incident: kjbox 2026-11-05, job `f01c9997`, "Roll of Dice" became "Roll of the Dice".
+
 `stage` (optional, `"fast"` | `"full"`, default `"full"`) supports a two-call
 pattern the frontend uses to keep the tidy off the critical path:
 
@@ -3461,7 +3476,15 @@ AudioSourceStep ("Tidied to …" / "Corrected to …"). Two steps
    `judge_match(stage="fast")`. A confident catalog match wins: its formatting
    becomes `canonical_*`, `engine: "catalog"`, kind `cosmetic` when the query
    already named that song (only casing/punctuation/word order differ), else
-   `content`. No catalog match → the AI verdict unchanged.
+   `content`. No catalog match → the AI verdict, but a confident answer that neither the
+   catalogue nor live Spotify confirms comes back `confident: false` (grounding rule, above).
+   A tidy that timed out keeps the AI verdict with reason `unavailable` (not cached).
+
+**Step 0 (v0.294.0): live Spotify.** Before Gemini, the raw query goes to live Spotify (3 s cap).
+A result whose artist + title *is* the query (either order, after normalising) is answered
+directly: `cosmetic`, `engine: "catalog"`, reason `live Spotify match`. Otherwise the results go to
+Gemini as candidates ("use the listed song's exact artist and title; never 'correct' to a more
+familiar title").
 
 kind `none` keeps the AI's `typed_artist`/`typed_title` split when it has one
 (kjbox pre-fills its make-it form with it). kjbox calls this only when its own
