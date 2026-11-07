@@ -9,6 +9,12 @@ verdict shape (kind cosmetic/content/ambiguous/none) plus the typed split.
 :func:`judge_match` catalog pass, so the singer gets exactly the canonical
 artist/title gen's AudioSourceStep would "tidy" to (the catalog can't parse a
 one-line query itself — the AI only does the split + typo fix).
+
+Live Spotify (2026-11-06, see ``service.py``'s grounding rule): before Gemini, the
+raw query goes to a live Spotify search. A result whose artist + title IS the query
+(either order, after normalising) answers it without Gemini. Otherwise Gemini gets
+those results as candidates, and a confident answer that neither the catalogue nor
+Spotify can confirm is returned with ``confident: false``.
 """
 from __future__ import annotations
 
@@ -26,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 Generate = Callable[[str, str, str], Awaitable[dict]]
 Judge = Callable[[str, str], Awaitable[MatchVerdict]]
+SpotifySearch = Callable[[str], Awaitable[Optional[list[dict]]]]
 
 _VALID_KINDS = {"cosmetic", "content", "ambiguous"}
 
@@ -45,6 +52,10 @@ GEMINI_ATTEMPT_TIMEOUT_S = 8.0
 GEMINI_MIN_DEADLINE_MS = 10000  # the API's minimum request deadline
 GEMINI_ATTEMPTS = 2
 CATALOG_TIDY_TIMEOUT_S = 4.0
+# Live Spotify lookup before Gemini. Kept short so the worst case still fits decide's
+# 25 s wait: 3 + 2 x 8 (Gemini) + 4 (tidy) = 23 s. A miss just means no candidates.
+SPOTIFY_TIMEOUT_S = 3.0
+SPOTIFY_CANDIDATES_FOR_AI = 8
 
 # In-flight catalog searches. One the tidy gave up on keeps running (warming decide and
 # the catalog proxy's cache for the next ask); strong refs so it isn't GC'd mid-flight.
@@ -75,7 +86,10 @@ _SYSTEM_PROMPT = (
     "  'ambiguous' – several real songs are plausible; list them in alternatives.\n"
     "  'none'      – not a recognisable song, or you are not sure.\n"
     "confident: true only when you are sure which released song is meant. Never "
-    "invent songs; prefer kind='none' when unsure. canonical_artist/canonical_title "
+    "invent songs; prefer kind='none' when unsure. When live Spotify results are "
+    "listed, they are real released songs: if one is the song meant, use its exact "
+    "artist and title. Never 'correct' a query to a different, more familiar title "
+    "when a listed result matches what was typed. canonical_artist/canonical_title "
     "must use official formatting. alternatives is a list of {artist,title} (max 4)."
 )
 
@@ -167,8 +181,18 @@ def _retryable(exc: BaseException) -> bool:
     return not (isinstance(code, int) and 400 <= code < 500 and code != 429)
 
 
+def _user_prompt(query: str, candidates: Optional[list[dict]]) -> str:
+    lines = [f'Singer typed: "{query}"']
+    if candidates:
+        lines.append("Live Spotify search results for this query (real released songs):")
+        lines += [f'- {c.get("artist_name", "")} — {c.get("track_name", "")}'
+                  for c in candidates[:SPOTIFY_CANDIDATES_FOR_AI]]
+    return "\n".join(lines)
+
+
 async def resolve_free_text(query: str, *, generate: Optional[Generate] = None,
-                            model: Optional[str] = None) -> dict:
+                            model: Optional[str] = None,
+                            candidates: Optional[list[dict]] = None) -> dict:
     """Split + correct a free-text song query. Never raises: failures → kind 'none'.
 
     Each Gemini attempt is bounded by GEMINI_ATTEMPT_TIMEOUT_S; a transient failure
@@ -180,7 +204,7 @@ async def resolve_free_text(query: str, *, generate: Optional[Generate] = None,
     for attempt in range(1, GEMINI_ATTEMPTS + 1):
         try:
             data = await asyncio.wait_for(
-                gen(model or _model(), _SYSTEM_PROMPT, f'Singer typed: "{query}"'),
+                gen(model or _model(), _SYSTEM_PROMPT, _user_prompt(query, candidates)),
                 GEMINI_ATTEMPT_TIMEOUT_S)
         except Exception as e:
             reason = f"timed out after {GEMINI_ATTEMPT_TIMEOUT_S:g}s" if isinstance(e, asyncio.TimeoutError) else str(e)
@@ -192,8 +216,49 @@ async def resolve_free_text(query: str, *, generate: Optional[Generate] = None,
     return _none(query, "unavailable")  # pragma: no cover - loop always returns
 
 
+def _split_like_query(query: str, artist: str, title: str) -> tuple[str, str]:
+    """The query's own words as (typed_artist, typed_title), given the song it names."""
+    words = query.split()
+    n_artist = len(artist.split())
+    if normalize_for_match(" ".join(words[:n_artist])) == normalize_for_match(artist):
+        return " ".join(words[:n_artist]), " ".join(words[n_artist:])
+    n_title = len(title.split())
+    if normalize_for_match(" ".join(words[:n_title])) == normalize_for_match(title):
+        return " ".join(words[n_title:]), " ".join(words[:n_title])
+    return artist, title
+
+
+def _spotify_exact(query: str, live: list[dict]) -> Optional[dict]:
+    """A live result whose artist + title is exactly the query (either order) → its verdict."""
+    typed = normalize_for_match(query)
+    if not typed:
+        return None
+    for c in live:
+        ca, ct = (c.get("artist_name") or "").strip(), (c.get("track_name") or "").strip()
+        if not (ca and ct):
+            continue
+        if typed in (normalize_for_match(f"{ca} {ct}"), normalize_for_match(f"{ct} {ca}")):
+            typed_artist, typed_title = _split_like_query(query, ca, ct)
+            return {
+                "kind": KIND_COSMETIC, "confident": True,
+                "typed_artist": typed_artist, "typed_title": typed_title,
+                "canonical_artist": ca, "canonical_title": ct, "alternatives": [],
+                "engine": "catalog", "reason": "live Spotify match",
+            }
+    return None
+
+
+async def _live_spotify(spotify: SpotifySearch, query: str) -> list[dict]:
+    try:
+        return list(await asyncio.wait_for(spotify(query), SPOTIFY_TIMEOUT_S) or [])
+    except Exception as e:  # timeout / decide down: no evidence, carry on as before
+        logger.warning(f"resolve_and_tidy live Spotify search failed: {e!r}")
+        return []
+
+
 async def resolve_and_tidy(query: str, *, generate: Optional[Generate] = None,
-                           judge: Optional[Judge] = None, model: Optional[str] = None) -> dict:
+                           judge: Optional[Judge] = None, model: Optional[str] = None,
+                           spotify: Optional[SpotifySearch] = None) -> dict:
     """Free-text split/correct, then gen's catalog tidy (the job flow's fast pass).
 
     The AI verdict's song — its canonical pick when confident, else the typed
@@ -201,9 +266,17 @@ async def resolve_and_tidy(query: str, *, generate: Optional[Generate] = None,
     "fast": catalog only, no second AI call). A confident catalog match wins:
     its formatting becomes the canonical artist/title, kind "cosmetic" when the
     query already named that song (only casing/punctuation/word order differ),
-    else "content". No catalog match → the AI verdict unchanged. Never raises.
+    else "content". No catalog match → the AI verdict, but a confident answer
+    that live Spotify didn't list either comes back ``confident: False``
+    (grounding rule). A timed-out tidy keeps the AI verdict as "unavailable"
+    (transient, not cached). A live Spotify result that IS the query answers
+    before Gemini runs. Never raises.
     """
-    verdict = await resolve_free_text(query, generate=generate, model=model)
+    live = await _live_spotify(spotify or _default_spotify, query)
+    exact = _spotify_exact(query, live)
+    if exact is not None:
+        return exact
+    verdict = await resolve_free_text(query, generate=generate, model=model, candidates=live)
     kind = verdict.get("kind")
     if kind in ("cosmetic", "content") and verdict.get("confident"):
         artist, title = verdict["canonical_artist"], verdict["canonical_title"]
@@ -231,6 +304,14 @@ async def resolve_and_tidy(query: str, *, generate: Optional[Generate] = None,
         return {**verdict, "reason": "unavailable"}
     if not (cat.confident and cat.engine == "catalog" and cat.kind in (KIND_COSMETIC, KIND_NONE)
             and cat.canonical_artist and cat.canonical_title):
+        if verdict.get("confident") and kind in ("cosmetic", "content"):
+            from backend.services.match_judge.service import names_song
+            if not names_song(live, artist, title):
+                # Grounding rule: neither the catalogue nor live Spotify has the song the
+                # AI named, so it's a guess. Offer it at most ("Did you mean…?").
+                logger.info(f"resolve_and_tidy: AI answer {artist!r} / {title!r} unconfirmed; not confident")
+                return {**verdict, "confident": False,
+                        "reason": f"{verdict.get('reason') or ''} [unconfirmed: not in catalog or Spotify]".strip()}
         return verdict
     ca, ct = cat.canonical_artist, cat.canonical_title
     typed = normalize_for_match(query)
@@ -250,6 +331,11 @@ async def resolve_and_tidy(query: str, *, generate: Optional[Generate] = None,
 async def _default_judge(artist: str, title: str) -> MatchVerdict:
     from backend.services.match_judge.service import judge_match
     return await judge_match(artist, title, stage="fast")
+
+
+async def _default_spotify(query: str) -> Optional[list[dict]]:
+    from backend.services.catalog_proxy_service import spotify_search
+    return await spotify_search(query)
 
 
 async def _default_generate(model: str, system_prompt: str, user_prompt: str) -> dict:

@@ -103,3 +103,43 @@ async def search_tracks(query: str, artist: str | None = None, limit: int = 10) 
     except Exception as e:
         logger.warning(f"Failed to search tracks from karaoke-decide: {e}")
         return []
+
+
+SPOTIFY_SEARCH_TIMEOUT = 6  # seconds; decide's own Spotify call is capped at 4 s
+SPOTIFY_CACHE_TTL_SECONDS = 600
+
+
+async def spotify_search(query: str, limit: int = 10) -> list[dict] | None:
+    """Live Spotify track search via karaoke-decide (partner route, X-Partner-Secret).
+
+    Lets the match judge confirm a song our BigQuery catalogue doesn't know (it's a July 2025
+    Spotify snapshot + MusicBrainz, so 2025+ releases and small artists are missing). Returns
+    track dicts with ``artist_name`` / ``track_name`` (the catalogue candidate shape), or
+    **None when there's no evidence either way**: secret unset, decide down, or decide's
+    Spotify breaker open. Never raises.
+    """
+    secret = getattr(settings, "decide_partner_secret", "") or ""
+    q = " ".join((query or "").split())
+    if not secret or len(q) < 2:
+        return None
+    cache_key = f"spotify:{q.casefold()}:{limit}"
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
+    url = f"{_get_base_url()}/api/partner/gen/spotify-search"
+    try:
+        async with httpx.AsyncClient(timeout=SPOTIFY_SEARCH_TIMEOUT) as client:
+            resp = await client.get(
+                url, params={"q": q[:300], "limit": min(limit, 10)},
+                headers={"X-Partner-Secret": secret},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+    except Exception as e:
+        logger.warning(f"Spotify search via karaoke-decide failed: {e}")
+        return None
+    if not isinstance(data, dict) or not data.get("available"):
+        return None
+    tracks = [t for t in data.get("tracks") or [] if isinstance(t, dict)]
+    _cache_set(cache_key, tracks, SPOTIFY_CACHE_TTL_SECONDS)
+    return tracks
