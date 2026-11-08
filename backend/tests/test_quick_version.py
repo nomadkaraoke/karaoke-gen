@@ -12,6 +12,20 @@ from backend.services.quick_version import renderer as r
 from backend.services.quick_version import service as qs
 
 
+class TestCleanTitle:
+    @pytest.mark.parametrize("raw,clean", [
+        ("My Body Isn't Ready (Orchestral Version Live From Sound City)", "My Body Isn't Ready"),
+        ("Creep (Acoustic) [Remastered 2009]", "Creep"),
+        ("Song - Live at Wembley", "Song"),
+        ("Song - 2011 Remaster", "Song"),
+        ("Rock - Paper - Scissors", "Rock - Paper - Scissors"),
+        ("(Intro)", "(Intro)"),
+        ("", ""),
+    ])
+    def test_clean_title(self, raw, clean):
+        assert r.clean_title(raw) == clean
+
+
 # --------------------------------------------------------------------------- #
 # Lyrics parsing / tiers
 # --------------------------------------------------------------------------- #
@@ -69,6 +83,56 @@ class TestFetchLrclib:
         with patch.object(r.requests, "Session", return_value=sess):
             got = r.fetch_lrclib_lyrics("A", "T", None)
         assert got.kind == "plain" and got.plain == "plain words"
+
+    def test_decorated_title_retries_cleaned_with_length_matched_sync(self):
+        sess = self._session([
+            _resp(404, {}),
+            _resp(200, []),
+            _resp(200, [
+                {"syncedLyrics": "[00:01.00]studio", "duration": 217},
+                {"syncedLyrics": "[00:02.00]live", "duration": 223},
+            ]),
+        ])
+        with patch.object(r.requests, "Session", return_value=sess):
+            got = r.fetch_lrclib_lyrics("Sombr", "My Body Isn't Ready (Orchestral Version Live From X)", 224.5)
+        assert got.kind == "synced" and got.timed == [(2.0, "live")]
+        assert sess.get.call_args.kwargs["params"] == {"q": "Sombr My Body Isn't Ready"}
+
+    def test_cleaned_title_sync_with_wrong_length_becomes_plain(self):
+        sess = self._session([
+            _resp(404, {}),
+            _resp(200, []),
+            _resp(200, [{"syncedLyrics": "[00:01.00]a\n[00:02.00]b", "duration": 180}]),
+        ])
+        with patch.object(r.requests, "Session", return_value=sess):
+            got = r.fetch_lrclib_lyrics("A", "Song (Live)", 224.5)
+        assert got.kind == "plain" and got.plain == "a\nb" and got.timed is None
+
+    def test_cleaned_title_without_duration_never_trusts_sync(self):
+        sess = self._session([_resp(404, {}), _resp(200, []),
+                              _resp(200, [{"syncedLyrics": "[00:01.00]a", "duration": 200}])])
+        with patch.object(r.requests, "Session", return_value=sess):
+            assert r.fetch_lrclib_lyrics("A", "Song (Live)", None).kind == "plain"
+
+    def test_exact_plain_beats_cleaned_retry(self):
+        sess = self._session([_resp(200, {"plainLyrics": "exact"}), _resp(200, [])])
+        with patch.object(r.requests, "Session", return_value=sess):
+            got = r.fetch_lrclib_lyrics("A", "Song (Live)", 200)
+        assert got.plain == "exact" and sess.get.call_count == 2
+
+    def test_cleaned_retry_failures_return_none(self):
+        err = r.requests.RequestException("down")
+        for third in (err, _resp(500, {}), _resp(200, [{"plainLyrics": " "}, "junk"])):
+            sess = self._session([_resp(404, {}), _resp(200, []), third])
+            with patch.object(r.requests, "Session", return_value=sess):
+                assert r.fetch_lrclib_lyrics("A", "Song (Live)", 200) is None
+            assert sess.get.call_count == 3
+
+    def test_undecorated_title_does_not_retry(self):
+        sess = self._session([_resp(404, {}), _resp(200, [])])
+        with patch.object(r.requests, "Session", return_value=sess):
+            assert r.fetch_lrclib_lyrics("A", "Song", 200) is None
+        assert sess.get.call_count == 2
 
     def test_network_errors_return_none(self):
         err = r.requests.RequestException("down")
@@ -288,6 +352,30 @@ class TestStartQuickVersion:
         assert _states(jm) == ["separating", "rendering", "ready"]
         ready = jm.update_state_data.call_args_list[-1].args[2]
         assert ready["lyrics_tier"] == "synced" and ready["line_count"] == 42 and "ready_at" in ready
+
+    @pytest.mark.parametrize("overrides,expected", [
+        ({}, ("Artist", "Song")),
+        ({"title": "Song (90% Tempo)"}, ("Artist", "Song")),
+        ({"lyrics_artist": "LA", "lyrics_title": "LT"}, ("LA", "LT")),
+    ])
+    def test_lyrics_search_names(self, tmp_path, overrides, expected):
+        seen = {}
+
+        def fake_render(**kw):
+            seen.update(kw)
+            open(kw["out_path"], "wb").write(b"x")
+            return r.RenderResult(kw["out_path"], "synced", 1, 1.0)
+
+        job = _job()
+        job.artist, job.title = "Artist", "Song"
+        for k, v in overrides.items():
+            setattr(job, k, v)
+        with patch.object(qs, "render_quick_video", side_effect=fake_render):
+            run = qs.start_quick_version(job, "a.flac", str(tmp_path), "/m", Mock(), Mock(),
+                                         separator_factory=_FakeSeparator)
+            assert run.join(10)
+        assert (seen["lyrics_artist"], seen["lyrics_title"]) == expected
+        assert seen["title"] == job.title  # display title untouched
 
     def test_separation_failure_is_non_fatal(self, tmp_path):
         jm = Mock()
