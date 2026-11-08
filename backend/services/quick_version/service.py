@@ -29,6 +29,7 @@ from typing import Any, Callable, Dict, Optional, Tuple
 
 from backend.services.job_notification_service import is_kjbox_job
 from backend.services.quick_version.renderer import render_quick_video
+from backend.services.tempo_label import strip_tempo_suffix
 
 logger = logging.getLogger(__name__)
 
@@ -161,10 +162,13 @@ class QuickVersionRender:
 
     def __init__(self, job_id: str, artist: str, title: str, instrumental: str, vocals: Optional[str],
                  workdir: str, job_manager: Any, storage: Any, job_log: Any = None,
-                 started_monotonic: Optional[float] = None, separation_seconds: Optional[float] = None):
+                 started_monotonic: Optional[float] = None, separation_seconds: Optional[float] = None,
+                 lyrics_artist: Optional[str] = None, lyrics_title: Optional[str] = None):
         self.job_id = job_id
         self.artist = artist or "Unknown"
         self.title = title or "Unknown"
+        self.lyrics_artist = lyrics_artist
+        self.lyrics_title = lyrics_title
         self.instrumental = instrumental
         self.vocals = vocals
         self.workdir = workdir
@@ -195,6 +199,7 @@ class QuickVersionRender:
             result = render_quick_video(
                 instrumental_path=self.instrumental, vocals_path=self.vocals,
                 artist=self.artist, title=self.title, out_path=out_path, workdir=render_dir,
+                lyrics_artist=self.lyrics_artist, lyrics_title=self.lyrics_title,
             )
             render_seconds = time.monotonic() - t0
             gcs_path = f"jobs/{self.job_id}/quick/quick.mp4"
@@ -259,6 +264,9 @@ def start_quick_version(
         return QuickVersionRender(
             job_id, job.artist, job.title, inst, vocals, workdir, job_manager, storage, job_log,
             started_monotonic=started, separation_seconds=sep_seconds,
+            # Same lyrics-search names the review page uses (never a tempo label).
+            lyrics_artist=getattr(job, "lyrics_artist", None) or job.artist,
+            lyrics_title=getattr(job, "lyrics_title", None) or strip_tempo_suffix(job.title),
         ).start()
     except Exception as exc:
         logger.warning(f"[job:{job_id}] Quick version skipped after error (non-fatal): {exc}", exc_info=True)

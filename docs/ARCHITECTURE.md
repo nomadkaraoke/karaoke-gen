@@ -827,6 +827,13 @@ full NOMAD version. Code: `backend/services/quick_version/` (a port of kjbox `fa
    crawl PNG + one ffmpeg `overlay` pass, 854×480, vocals mixed back in at 30% as a guide. Every
    ffmpeg input and the output are bounded with `-t <duration>`: the GPU image's ffmpeg 4.4 never
    ends on `-shortest` alone once `amix` is involved (first prod job ran into the 300 s join timeout).
+   LRCLIB is searched with the job's `lyrics_artist`/`lyrics_title` overrides (else artist + title
+   without a tempo label). If the exact title finds nothing, it retries once with the title's
+   decorations stripped (`clean_title`: trailing `(…)`/`[…]`, `- Live …`/`- Remaster` suffixes). A
+   synced hit from that retry keeps its timing only when its length is within 4 s of the audio
+   (otherwise it is likely another recording, e.g. studio vs live), and anything else becomes a constant
+   crawl. Added after a "… (Orchestral Version Live From Sound City)" draft rendered with no lyrics
+   (2026-11-06). kjbox can also add lyrics to a lyric-less draft on the box (kjbox v0.150.0).
 3. Uploads `jobs/{id}/quick/quick.mp4` → `file_urls.quick.video_mp4`, and records
    `state_data.quick_version = {status: separating|rendering|ready|failed, lyrics_tier, ready_at, …}`.
 4. The worker joins the render (≤300 s) before cleaning up its temp dir — even when the ensemble

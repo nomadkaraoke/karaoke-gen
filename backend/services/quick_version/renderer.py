@@ -49,6 +49,30 @@ TimedLine = Tuple[str, Optional[float]]
 
 _LRC_RE = re.compile(r"\[(\d+):(\d+(?:\.\d+)?)\]")
 
+# A synced LRCLIB result found under a *cleaned* title is often a different
+# recording (studio vs "Live From ..."), so its timing is only trusted when the
+# lengths agree this closely; otherwise its words scroll at a constant pace.
+CLEAN_TITLE_SYNC_TOLERANCE_S = 4.0
+
+# Trailing "(...)" / "[...]" groups and " - Live at ..." style suffixes that stop
+# LRCLIB matching the plain song (kjbox quick_lyrics.clean_title mirrors this).
+_TRAILING_GROUP_RE = re.compile(r"\s*[\(\[][^\(\)\[\]]*[\)\]]\s*$")
+_DASH_SUFFIX_RE = re.compile(
+    r"\s+-\s+.*\b(live|version|remaster(ed)?|mix|edit|acoustic|orchestral|session|demo|mono|stereo)\b.*$",
+    re.IGNORECASE)
+
+
+def clean_title(title: str) -> str:
+    """'Song (Live From X) [HD]' / 'Song - 2011 Remaster' → 'Song' (never empty)."""
+    t = (title or "").strip()
+    while True:
+        stripped = _TRAILING_GROUP_RE.sub("", t)
+        if stripped == t or not stripped.strip():
+            break
+        t = stripped
+    t = _DASH_SUFFIX_RE.sub("", t)
+    return t.strip() or (title or "").strip()
+
 
 @dataclass
 class Lyrics:
@@ -151,7 +175,44 @@ def fetch_lrclib_lyrics(
     except (requests.RequestException, ValueError) as exc:
         logger.warning(f"LRCLIB search failed: {exc}")
 
+    # Decorated titles ("My Song (Orchestral Version Live From X)") rarely match
+    # on LRCLIB: retry once with the plain title. Exact-title plain lyrics still
+    # win over this looser match.
+    cleaned = clean_title(title)
+    if exact_plain is None and cleaned and cleaned.casefold() != (title or "").strip().casefold():
+        exact_plain = _search_cleaned_title(artist, cleaned, duration, timeout, session)
+
     return exact_plain
+
+
+def _search_cleaned_title(artist: str, cleaned: str, duration: Optional[float], timeout: float,
+                          session: requests.Session) -> Optional[Lyrics]:
+    """Search LRCLIB with a cleaned title. Synced timing is kept only for a hit
+    whose length matches the audio; any other hit is used as plain lyrics."""
+    try:
+        r = lrclib_client.get(f"{LRCLIB_BASE}/search", {"q": f"{artist} {cleaned}"}, user_agent=USER_AGENT,
+                              timeout=timeout, session=session, retry=False)
+        if r.status_code != 200:
+            return None
+        hits = [h for h in (r.json() or []) if isinstance(h, dict)]
+    except (requests.RequestException, ValueError) as exc:
+        logger.warning(f"LRCLIB cleaned-title search failed: {exc}")
+        return None
+    fallback: Optional[Lyrics] = None
+    for hit in sorted(hits, key=lambda h: 0 if h.get("syncedLyrics") else 1):
+        got = lyrics_from_lrclib_payload(hit)
+        if got is None:
+            continue
+        hit_duration = hit.get("duration")
+        if (got.kind == "synced" and duration and isinstance(hit_duration, (int, float))
+                and abs(hit_duration - duration) <= CLEAN_TITLE_SYNC_TOLERANCE_S):
+            logger.info(f"Quick lyrics: synced match via cleaned title {cleaned!r}")
+            return got
+        if fallback is None and got.plain.strip():
+            fallback = Lyrics("plain", got.plain)
+    if fallback is not None:
+        logger.info(f"Quick lyrics: plain lyrics via cleaned title {cleaned!r} (no length-matched sync)")
+    return fallback
 
 
 def resolve_timed_lines(lyrics: Optional[Lyrics]) -> Tuple[List[TimedLine], str]:
@@ -326,15 +387,19 @@ def render_quick_video(
     workdir: str,
     lyrics: Optional[Lyrics] = None,
     fetch_lyrics: bool = True,
+    lyrics_artist: Optional[str] = None,
+    lyrics_title: Optional[str] = None,
     settings: Optional[RenderSettings] = None,
     ffmpeg_timeout: float = 600.0,
 ) -> RenderResult:
-    """Render the quick video. ``lyrics`` overrides the LRCLIB fetch."""
+    """Render the quick video. ``lyrics`` overrides the LRCLIB fetch;
+    ``lyrics_artist``/``lyrics_title`` (the job's lyrics-search overrides) are
+    what LRCLIB is searched with, while ``artist``/``title`` are displayed."""
     s = settings or RenderSettings()
     duration = probe_duration(instrumental_path)
 
     if lyrics is None and fetch_lyrics:
-        lyrics = fetch_lrclib_lyrics(artist, title, duration)
+        lyrics = fetch_lrclib_lyrics(lyrics_artist or artist, lyrics_title or title, duration)
 
     timed_lines, tier = resolve_timed_lines(lyrics)
     if tier == "synced":
