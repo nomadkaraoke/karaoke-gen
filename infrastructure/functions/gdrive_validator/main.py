@@ -45,7 +45,14 @@ NOTIFY_ON_SUCCESS = os.environ.get("NOTIFY_ON_SUCCESS", "true").lower() == "true
 # in the middle (2026-11-07: NOMAD-1871's check flagged NOMAD-1872 mid-upload).
 # Gaps for such tracks are held back; the track's own post-job trigger (which
 # names its brand_code) and the daily run still check it once the upload ends.
-IN_FLIGHT_GRACE_MINUTES = int(os.environ.get("IN_FLIGHT_GRACE_MINUTES", "30"))
+def _grace_minutes() -> int:
+    try:
+        return int(os.environ.get("IN_FLIGHT_GRACE_MINUTES", "30"))
+    except ValueError:
+        return 30
+
+
+IN_FLIGHT_GRACE_MINUTES = _grace_minutes()
 
 # Known gaps configuration - matches the local validate_and_sync.py script
 # These are HISTORICAL ONLY (pre-generator era, before Dec 2024). Do NOT add new entries.
