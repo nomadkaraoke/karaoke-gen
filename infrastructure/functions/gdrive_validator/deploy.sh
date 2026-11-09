@@ -53,7 +53,7 @@ gcloud functions deploy "${FUNCTION_NAME}" \
   --min-instances=0 \
   --max-instances=1 \
   --service-account="gdrive-validator@${PROJECT_ID}.iam.gserviceaccount.com" \
-  --set-env-vars="GDRIVE_FOLDER_ID=1laRKAyxo0v817SstfM5XkpbWiNKNAMSX,EMAIL_TO=gen@nomadkaraoke.com,EMAIL_FROM=gen@nomadkaraoke.com,NOTIFY_ON_SUCCESS=true" \
+  --set-env-vars="GDRIVE_FOLDER_ID=1laRKAyxo0v817SstfM5XkpbWiNKNAMSX,EMAIL_TO=gen@nomadkaraoke.com,EMAIL_FROM=gen@nomadkaraoke.com,NOTIFY_ON_SUCCESS=false,LOG_EXECUTION_ID=true" \
   --set-secrets="PUSHBULLET_API_KEY=pushbullet-api-key:latest,POSTMARK_SERVER_TOKEN=postmark-server-token:latest" \
   --project="${PROJECT_ID}"
 
