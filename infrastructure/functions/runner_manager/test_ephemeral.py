@@ -736,6 +736,73 @@ class TestListQueuedSelfHostedJobs:
         job_calls = [c for c in req.call_args_list if "/runs/11/jobs" in c.args[1]]
         assert len(job_calls) == 1
 
+    @staticmethod
+    def _scan_with_runs_failures(ep, failures):
+        """Scan one repo whose first runs-list calls raise ``failures`` in order."""
+        pending = list(failures)
+
+        def fake_request(method, path, pat, body=None):
+            if path.startswith("/orgs/test-org/repos"):
+                return [{"name": "karaoke-gen"}]
+            if "/actions/runs?status=queued" in path and pending:
+                raise pending.pop(0)
+            if "/actions/runs?status=queued" in path:
+                return {"workflow_runs": [{"id": 11}]}
+            if "/actions/runs?status=in_progress" in path:
+                return {"workflow_runs": []}
+            if "/actions/runs/11/jobs" in path:
+                return {"jobs": [{"id": 1, "status": "queued", "labels": BUILD_LABELS}]}
+            raise AssertionError(path)
+
+        with patch.object(ep, "_github_request", side_effect=fake_request) as req:
+            jobs = ep.list_queued_self_hosted_jobs("ghp_test")
+        return jobs, req
+
+    def test_one_dropped_connection_is_retried_without_paging(self, capsys):
+        import http.client
+
+        ep = _fresh_module()
+        jobs, _ = self._scan_with_runs_failures(
+            ep, [http.client.RemoteDisconnected("Remote end closed connection without response")]
+        )
+
+        assert [(j["repo"], j["id"]) for j in jobs] == [("karaoke-gen", 1)]
+        out = capsys.readouterr().out
+        assert _error_messages(out) == []
+        assert "Retrying karaoke-gen in stalled-job scan" in out
+
+    def test_transient_error_twice_in_a_row_pages(self, capsys):
+        import http.client
+
+        ep = _fresh_module()
+        jobs, _ = self._scan_with_runs_failures(
+            ep, [http.client.RemoteDisconnected("closed"), TimeoutError("timed out")]
+        )
+
+        assert jobs == []
+        assert any("Skipping karaoke-gen in stalled-job scan" in m for m in _error_messages(capsys.readouterr().out))
+
+    def test_auth_error_pages_without_retry(self, capsys):
+        import urllib.error
+
+        ep = _fresh_module()
+        forbidden = urllib.error.HTTPError("https://api.github.com/x", 403, "Forbidden", {}, None)
+        jobs, req = self._scan_with_runs_failures(ep, [forbidden])
+
+        assert jobs == []
+        assert any("Skipping karaoke-gen in stalled-job scan" in m for m in _error_messages(capsys.readouterr().out))
+        runs_calls = [c for c in req.call_args_list if "status=queued" in c.args[1]]
+        assert len(runs_calls) == 1
+
+    def test_github_5xx_is_transient(self):
+        import urllib.error
+
+        ep = _fresh_module()
+        assert ep._is_transient_github_error(urllib.error.HTTPError("u", 502, "Bad Gateway", {}, None))
+        assert ep._is_transient_github_error(urllib.error.HTTPError("u", 429, "Too Many", {}, None))
+        assert not ep._is_transient_github_error(urllib.error.HTTPError("u", 404, "Not Found", {}, None))
+        assert not ep._is_transient_github_error(RuntimeError("403 no access"))
+
 
 class TestCleanupTriggersRedispatch:
     def test_redispatch_sees_only_surviving_vms(self):

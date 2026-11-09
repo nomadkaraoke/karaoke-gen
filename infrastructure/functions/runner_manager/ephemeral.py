@@ -14,6 +14,7 @@ This module is invoked from main.py when RUNNER_MODE=ephemeral.
 from __future__ import annotations
 
 import concurrent.futures
+import http.client
 import json
 import os
 import urllib.error
@@ -768,31 +769,60 @@ def list_queued_self_hosted_jobs(pat: str) -> list[dict]:
     """
     jobs: list[dict] = []
     for repo in list_org_repos(pat):
-        try:
-            run_ids: set[int] = set()
-            for status in ("queued", "in_progress"):
-                runs = _github_request(
-                    "GET",
-                    f"/repos/{GITHUB_ORG}/{repo}/actions/runs?status={status}&per_page=50",
-                    pat,
-                )
-                if isinstance(runs, dict):
-                    run_ids.update(r["id"] for r in runs.get("workflow_runs", []))
-            for run_id in sorted(run_ids):
-                run_jobs = _github_request(
-                    "GET",
-                    f"/repos/{GITHUB_ORG}/{repo}/actions/runs/{run_id}/jobs?filter=latest&per_page=100",
-                    pat,
-                )
-                if not isinstance(run_jobs, dict):
+        # A one-off network blip (GitHub closing the connection, a timeout, a
+        # 5xx) gets one retry before it pages: a single dropped connection is
+        # not the safety net failing, but a repo that fails twice in a row is.
+        for attempt in (1, 2):
+            try:
+                jobs.extend(_queued_self_hosted_jobs_in_repo(repo, pat))
+                break
+            except Exception as exc:  # noqa: BLE001
+                if attempt == 1 and _is_transient_github_error(exc):
+                    print(f"Retrying {repo} in stalled-job scan after transient error: {exc!r}", flush=True)
                     continue
-                for job in run_jobs.get("jobs", []):
-                    labels = job.get("labels", [])
-                    if job.get("status") == "queued" and "self-hosted" in labels and can_serve(labels):
-                        jobs.append({**job, "repo": repo})
-        except Exception as exc:  # noqa: BLE001
-            _log_error(f"Skipping {repo} in stalled-job scan: {exc!r}")
+                _log_error(f"Skipping {repo} in stalled-job scan: {exc!r}")
+                break
     return jobs
+
+
+def _queued_self_hosted_jobs_in_repo(repo: str, pat: str) -> list[dict]:
+    """Queued jobs in one repo that one of our runner families can serve."""
+    jobs: list[dict] = []
+    run_ids: set[int] = set()
+    for status in ("queued", "in_progress"):
+        runs = _github_request(
+            "GET",
+            f"/repos/{GITHUB_ORG}/{repo}/actions/runs?status={status}&per_page=50",
+            pat,
+        )
+        if isinstance(runs, dict):
+            run_ids.update(r["id"] for r in runs.get("workflow_runs", []))
+    for run_id in sorted(run_ids):
+        run_jobs = _github_request(
+            "GET",
+            f"/repos/{GITHUB_ORG}/{repo}/actions/runs/{run_id}/jobs?filter=latest&per_page=100",
+            pat,
+        )
+        if not isinstance(run_jobs, dict):
+            continue
+        for job in run_jobs.get("jobs", []):
+            labels = job.get("labels", [])
+            if job.get("status") == "queued" and "self-hosted" in labels and can_serve(labels):
+                jobs.append({**job, "repo": repo})
+    return jobs
+
+
+def _is_transient_github_error(exc: BaseException) -> bool:
+    """True for network-level failures and GitHub 5xx/429 worth one retry.
+
+    Auth/permission/not-found errors (other 4xx) are not transient: retrying
+    won't help, so they page straight away.
+    """
+    if isinstance(exc, urllib.error.HTTPError):
+        return exc.code == 429 or exc.code >= 500
+    # URLError wraps DNS/connect failures; http.client.RemoteDisconnected is a
+    # ConnectionResetError; socket timeouts are TimeoutError (both OSError).
+    return isinstance(exc, (urllib.error.URLError, http.client.HTTPException, OSError))
 
 
 def _family_of_runner_name(name: str) -> str | None:
