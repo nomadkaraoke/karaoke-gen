@@ -16,6 +16,7 @@ import re
 import json
 import logging
 from collections import defaultdict
+from datetime import datetime, timedelta, timezone
 from typing import Union
 import functions_framework
 import requests
@@ -37,6 +38,14 @@ EMAIL_FROM = os.environ.get("EMAIL_FROM", "gen@nomadkaraoke.com")
 # Set to "true" to receive daily summary even when no issues found
 # Set to "false" to only receive notifications when issues are detected
 NOTIFY_ON_SUCCESS = os.environ.get("NOTIFY_ON_SUCCESS", "true").lower() == "true"
+
+# A track whose newest file landed in Drive this recently is treated as still
+# uploading: a job's packaging step uploads MP4, then MP4-720p, then CDG over a
+# couple of minutes, and the post-job trigger for an earlier job can fire right
+# in the middle (2026-11-07: NOMAD-1871's check flagged NOMAD-1872 mid-upload).
+# Gaps for such tracks are held back; the track's own post-job trigger (which
+# names its brand_code) and the daily run still check it once the upload ends.
+IN_FLIGHT_GRACE_MINUTES = int(os.environ.get("IN_FLIGHT_GRACE_MINUTES", "30"))
 
 # Known gaps configuration - matches the local validate_and_sync.py script
 # These are HISTORICAL ONLY (pre-generator era, before Dec 2024). Do NOT add new entries.
@@ -93,7 +102,9 @@ def get_drive_service():
     return build('drive', 'v3', credentials=credentials)
 
 
-def list_folder_contents(service, folder_id: str) -> dict[str, list[str]]:
+def list_folder_contents(
+    service, folder_id: str, created_times: dict[str, str] | None = None
+) -> dict[str, list[str]]:
     """
     List all files in a Google Drive folder and its subfolders.
     
@@ -102,6 +113,9 @@ def list_folder_contents(service, folder_id: str) -> dict[str, list[str]]:
     - CDG/ (contains .zip files)
     - MP4/ (contains .mp4 files)  
     - MP4-720p/ (contains .mp4 files)
+
+    If ``created_times`` is given, it is filled with ``{filename: createdTime}``
+    (RFC 3339) so the caller can tell which tracks are still being uploaded.
     """
     results = {}
     
@@ -134,12 +148,15 @@ def list_folder_contents(service, folder_id: str) -> dict[str, list[str]]:
                 query = f"'{folder_id_inner}' in parents and trashed=false and mimeType!='application/vnd.google-apps.folder'"
                 response = service.files().list(
                     q=query,
-                    fields="nextPageToken, files(name)",
+                    fields="nextPageToken, files(name, createdTime)",
                     pageSize=1000,
                     pageToken=page_token
                 ).execute()
                 
-                files.extend([f['name'] for f in response.get('files', [])])
+                for f in response.get('files', []):
+                    files.append(f['name'])
+                    if created_times is not None and f.get('createdTime'):
+                        created_times[f['name']] = f['createdTime']
                 page_token = response.get('nextPageToken')
                 
                 if not page_token:
@@ -187,9 +204,36 @@ def get_sequence_number(filename: str) -> int | None:
     return None
 
 
-def validate_files(files_by_folder: dict[str, list[str]]) -> dict:
+def recently_uploaded_sequences(
+    created_times: dict[str, str],
+    now: datetime | None = None,
+    grace_minutes: int = IN_FLIGHT_GRACE_MINUTES,
+) -> set[int]:
+    """Sequence numbers that have any file created within the grace window."""
+    now = now or datetime.now(timezone.utc)
+    cutoff = now - timedelta(minutes=grace_minutes)
+    recent = set()
+    for filename, created in created_times.items():
+        seq = get_sequence_number(filename)
+        if seq is None:
+            continue
+        try:
+            ts = datetime.fromisoformat(created.replace("Z", "+00:00"))
+        except (TypeError, ValueError):
+            continue
+        if ts >= cutoff:
+            recent.add(seq)
+    return recent
+
+
+def validate_files(
+    files_by_folder: dict[str, list[str]], in_flight: set[int] | None = None
+) -> dict:
     """
     Validate all files and return a dict of issues found.
+
+    ``in_flight`` sequence numbers (tracks still uploading) are not reported
+    as gaps.
 
     Returns:
         {
@@ -255,7 +299,7 @@ def validate_files(files_by_folder: dict[str, list[str]]) -> dict:
             min_num = min(sequence_numbers)
             expected_range = set(range(min_num, global_max + 1))
             excluded = EXCLUDED_NUMBERS.get(folder_name, set())
-            missing = sorted(expected_range - sequence_numbers - excluded)
+            missing = sorted(expected_range - sequence_numbers - excluded - (in_flight or set()))
 
             if missing:
                 issues['gaps'][folder_name] = missing
@@ -501,7 +545,8 @@ def validate_gdrive(request):
         service = get_drive_service()
 
         # List all files
-        files_by_folder = list_folder_contents(service, GDRIVE_FOLDER_ID)
+        created_times: dict[str, str] = {}
+        files_by_folder = list_folder_contents(service, GDRIVE_FOLDER_ID, created_times)
 
         if not files_by_folder:
             logger.warning("No folders found in Google Drive")
@@ -511,7 +556,10 @@ def validate_gdrive(request):
             }), 200, {"Content-Type": "application/json"}
 
         # Validate files
-        issues = validate_files(files_by_folder)
+        in_flight = recently_uploaded_sequences(created_times)
+        if in_flight:
+            logger.info("Holding back gap checks for tracks still uploading: %s", sorted(in_flight))
+        issues = validate_files(files_by_folder, in_flight=in_flight)
 
         # Targeted same-run completeness for the just-published track.
         if brand_code:

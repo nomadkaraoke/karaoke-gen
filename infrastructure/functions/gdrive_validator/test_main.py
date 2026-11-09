@@ -31,6 +31,7 @@ from main import (  # noqa: E402
     expand_gaps,
     has_issues,
     check_track_completeness,
+    recently_uploaded_sequences,
 )
 
 
@@ -333,3 +334,35 @@ class TestHasIssues:
 
     def test_has_gaps(self):
         assert has_issues({"duplicates": {}, "invalid_filenames": {}, "gaps": {"MP4": [3]}})
+
+
+class TestInFlightUploads:
+    """2026-11-07: NOMAD-1871's post-job check ran while NOMAD-1872 was mid-upload
+    (MP4 done, 720p + CDG not yet) and emailed a false sequence-gap alert."""
+
+    NOW = __import__("datetime").datetime(2026, 11, 7, 12, 24, 47, tzinfo=__import__("datetime").timezone.utc)
+
+    def _files(self):
+        return {
+            "MP4": [make_mp4(i) for i in range(100, 106)],
+            "MP4-720p": [make_mp4(i) for i in range(100, 105)],
+            "CDG": [make_cdg(i) for i in range(100, 105)],
+        }
+
+    def test_track_still_uploading_is_not_a_gap(self):
+        created = {make_mp4(105): "2026-11-07T12:24:30.000Z", make_mp4(104): "2026-11-06T09:00:00.000Z"}
+        in_flight = recently_uploaded_sequences(created, now=self.NOW, grace_minutes=30)
+        assert in_flight == {105}
+        issues = validate_files(self._files(), in_flight=in_flight)
+        assert issues["gaps"] == {}
+
+    def test_old_track_missing_is_still_a_gap(self):
+        created = {make_mp4(105): "2026-11-07T10:00:00.000Z"}
+        in_flight = recently_uploaded_sequences(created, now=self.NOW, grace_minutes=30)
+        assert in_flight == set()
+        issues = validate_files(self._files(), in_flight=in_flight)
+        assert issues["gaps"] == {"MP4-720p": [105], "CDG": [105]}
+
+    def test_bad_timestamps_and_non_track_files_ignored(self):
+        created = {"desktop.ini": "2026-11-07T12:24:00Z", make_mp4(105): "garbage"}
+        assert recently_uploaded_sequences(created, now=self.NOW) == set()

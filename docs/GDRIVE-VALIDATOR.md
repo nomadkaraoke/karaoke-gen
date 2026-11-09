@@ -99,6 +99,7 @@ Notifications are sent when:
 | `NOTIFY_ON_SUCCESS` | `true` | Send daily "all clear" summary |
 | `EMAIL_TO` | `gen@nomadkaraoke.com` | Email recipient |
 | `EMAIL_FROM` | `gen@nomadkaraoke.com` | Email sender |
+| `IN_FLIGHT_GRACE_MINUTES` | `30` (default) | Tracks with any file created in Drive this recently count as still uploading and are left out of the gap check |
 
 ### Secrets (Cloud Function)
 
@@ -201,6 +202,16 @@ The post-job trigger uses a 5-minute Cloud Tasks delay (via `gdrive-validation-q
 ### Sequence Gap Detected
 
 **IMPORTANT: Never add new entries to `KNOWN_GAPS`.** The existing known gaps are historical (pre-generator era, over a year old). Every new gap is a real bug that must be investigated and fixed.
+
+**Tracks still uploading are not gaps.** A job's packaging step uploads MP4, then
+MP4-720p, then CDG over ~2 minutes, and another job's post-job trigger can run in that
+window. On 2026-11-07 NOMAD-1871's check ran at 12:24:47 UTC while NOMAD-1872 was
+uploading (12:23:39–12:25:40) and emailed "CDG/MP4-720p: missing 1872"; the files were
+all there a minute later. Since then the validator reads each file's Drive `createdTime`
+and leaves out of the gap check any track with a file created in the last
+`IN_FLIGHT_GRACE_MINUTES` (30). That track is still checked by its own post-job trigger
+(which names its `brand_code`) and by the daily 9 PM run. If you get a gap alert for the
+newest track, first check whether that job was in `packaging` at the alert time.
 
 **Investigation steps:**
 
