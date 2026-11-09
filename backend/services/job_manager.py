@@ -567,9 +567,23 @@ class JobManager:
 
         return urls
 
-    def delete_job(self, job_id: str, delete_files: bool = True) -> None:
-        """Delete a job, its files, and its logs subcollection."""
+    def delete_job(
+        self,
+        job_id: str,
+        delete_files: bool = True,
+        archived_by: Optional[str] = None,
+        reason: str = "deleted",
+    ) -> None:
+        """Delete a job, its files, and its logs subcollection.
+
+        The job doc, logs and audio-edit sessions are first copied to the archive
+        collection (``jobs_archive``). If that copy fails the delete is aborted, so a
+        deleted job is never lost. Bulk test cleanup (``delete_jobs_by_filter``) does
+        not archive.
+        """
         job = self.get_job(job_id)
+        if job:
+            self.firestore.archive_job(job_id, archived_by=archived_by, reason=reason)
 
         # Refund credit if job never completed (and wasn't already refunded via fail/cancel)
         if job:

@@ -22,6 +22,11 @@ def get_job(job_id: str) -> dict | None:
 
     if doc.exists:
         return doc.to_dict()
+    # Deleted jobs are archived (doc + archived_logs) instead of lost.
+    archived = db.collection('jobs_archive').document(job_id).get()
+    if archived.exists:
+        print(f"(job {job_id} was deleted; showing jobs_archive copy)", file=sys.stderr)
+        return archived.to_dict()
     return None
 
 

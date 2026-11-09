@@ -699,6 +699,30 @@ def test_completed_made_for_you_order_anonymised(client, db):
     assert job["customer_notes"] is None
 
 
+def test_archived_jobs_redacted_not_deleted(client, db):
+    """Deleted jobs live on in jobs_archive as system data; account deletion redacts them."""
+    _seed_user(db)
+    archived = dict(_seed_job(db, "arch1"), archived_by="admin@nomadkaraoke.com", archive_reason="admin_delete")
+    db.collection("jobs").docs.pop("arch1")
+    db.collection("jobs_archive").docs["arch1"] = archived
+    mfy = dict(_seed_job(db, "arch2", email="admin@nomadkaraoke.com", made_for_you=True, customer_email=EMAIL))
+    db.collection("jobs").docs.pop("arch2")
+    db.collection("jobs_archive").docs["arch2"] = mfy
+
+    body = _delete(client).json()
+    tomb = f"deleted:{body['summary']['deletion_id']}"
+    a1 = db.collection("jobs_archive").docs["arch1"]
+    assert a1["user_email"] == tomb
+    assert a1["creation_ip"] is None
+    assert "client_ip" not in a1["request_metadata"]
+    assert "customer_email" not in a1["state_data"]
+    assert a1["artist"] == "Invented Band"  # system data kept
+    assert a1["archive_reason"] == "admin_delete"
+    a2 = db.collection("jobs_archive").docs["arch2"]
+    assert a2["user_email"] == "admin@nomadkaraoke.com"
+    assert a2["customer_email"] == tomb
+
+
 def test_other_users_jobs_untouched(client, db):
     _seed_user(db)
     _seed_job(db, "j9", email=OTHER)
