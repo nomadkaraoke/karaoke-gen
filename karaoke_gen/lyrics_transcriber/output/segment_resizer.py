@@ -1,7 +1,7 @@
 import logging
 import re
 import unicodedata
-from typing import List, Optional
+from typing import Callable, List, Optional
 
 from karaoke_gen.lyrics_transcriber.types import LyricsSegment, Word
 from karaoke_gen.lyrics_transcriber.utils.word_utils import WordUtils
@@ -256,6 +256,67 @@ class SegmentResizer:
 
         self._log_output_segments(resized_segments)
         return resized_segments
+
+    # Punctuation that ends a phrase: the preferred place to break an over-wide line
+    _PHRASE_END = (",", ".", ";", ":", "!", "?", ")", "—", "-")
+
+    def split_to_width(
+        self,
+        segments: List[LyricsSegment],
+        measure: Callable[[str], float],
+        max_width: float,
+    ) -> List[LyricsSegment]:
+        """Split any segment whose rendered width exceeds ``max_width`` pixels.
+
+        ``max_line_length`` is a character budget, which wide-glyph lines can beat:
+        "Mm- mm- mm, mm- mm- mm" is short in characters but wider than the frame.
+        libass then wraps the line itself and the second half lands on the row
+        below, drawing over that row's lyrics. ``measure`` returns a line's pixel
+        width as the renderer will draw it; lines that fit pass through unchanged.
+
+        A single word too wide for the frame can't be split and is kept as is.
+        """
+        out: List[LyricsSegment] = []
+        for segment in segments:
+            out.extend(self._split_segment_to_width(segment, measure, max_width))
+        return out
+
+    @staticmethod
+    def _words_text(words: List[Word]) -> str:
+        return " ".join(w.text.replace("\n", "").strip() for w in words)
+
+    def _split_segment_to_width(
+        self, segment: LyricsSegment, measure: Callable[[str], float], max_width: float
+    ) -> List[LyricsSegment]:
+        words = segment.words
+        if len(words) < 2 or measure(self._words_text(words)) <= max_width:
+            return [segment]
+
+        # Pick the break: prefer one where both halves fit, then a phrase-ending
+        # word before the break, then the most balanced halves.
+        best_key, best_i = None, 1
+        for i in range(1, len(words)):
+            left = measure(self._words_text(words[:i]))
+            right = measure(self._words_text(words[i:]))
+            fits = left <= max_width and right <= max_width
+            phrase_break = words[i - 1].text.strip().endswith(self._PHRASE_END)
+            key = (not fits, not phrase_break, abs(left - right))
+            if best_key is None or key < best_key:
+                best_key, best_i = key, i
+
+        self.logger.warning(
+            f"Line too wide for the frame ({measure(self._words_text(words)):.0f}px > {max_width:.0f}px), "
+            f"splitting at word {best_i} of {len(words)}"
+        )
+        pieces = []
+        for part in (words[:best_i], words[best_i:]):
+            piece = self._create_segment_from_words(self._words_text(part), part, singer=segment.singer)
+            pieces.extend(self._split_segment_to_width(piece, measure, max_width))
+        if segment.translation:
+            shares = split_text_proportionally(segment.translation, [self._display_width(p.text) for p in pieces])
+            for piece, share in zip(pieces, shares):
+                piece.translation = share or None
+        return pieces
 
     def _clean_text(self, text: str) -> str:
         """Clean text by removing newlines and extra whitespace.

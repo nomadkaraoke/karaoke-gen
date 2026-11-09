@@ -17,6 +17,7 @@ from karaoke_gen.lyrics_transcriber.output.ass.section_detector import SectionDe
 from karaoke_gen.lyrics_transcriber.output.ass.config import ScreenConfig, chord_layout, translation_layout
 from karaoke_gen.lyrics_transcriber.output.ass.chords import ChordChange, assign_chords_to_segments, clean_chords
 from karaoke_gen.lyrics_transcriber.output.ass.event import Event
+from karaoke_gen.lyrics_transcriber.output.segment_resizer import SegmentResizer
 
 
 # Translation rows render at this fraction of the lyric colour's opacity, so they read as
@@ -29,6 +30,9 @@ CHORD_BOX_RIGHT = 0.955
 CHORD_BOX_TOP = 0.045
 CHORD_BOX_SIZE_RATIO = 1.25  # box chord size / chord-row size
 CHORD_BOX_NEXT_RATIO = 0.55  # "next" chord size / current chord size
+# A lyric line may use at most this fraction of the frame width; wider lines are split
+# (libass would otherwise wrap them into the row below). Leaves room for the outline.
+MAX_LINE_WIDTH_FRACTION = 0.94
 
 
 def _ass_colour(color) -> str:
@@ -180,6 +184,7 @@ class SubtitlesGenerator:
         output_path = self._get_output_path(f"{output_prefix} (Karaoke)", "ass")
 
         try:
+            segments = self._fit_segments_to_width(segments)
             self.logger.debug(f"Processing {len(segments)} segments")
             song_duration = self._get_audio_duration(audio_filepath, segments)
 
@@ -206,6 +211,36 @@ class SubtitlesGenerator:
         except Exception as e:
             self.logger.error(f"Failed to generate ASS file: {str(e)}", exc_info=True)
             raise
+
+    def _fit_segments_to_width(self, segments: List[LyricsSegment]) -> List[LyricsSegment]:
+        """Split lines that would render wider than the frame.
+
+        Lines are sized by character count upstream, but glyph widths vary a lot
+        ("mm- mm- mm" is far wider per character than "it is in"). A line wider
+        than the frame is wrapped by libass onto a second line one row lower,
+        which draws over the next row's lyrics (NOMAD-1779). Measure each line in
+        the real style font, the way libass sizes it, and split the ones that
+        don't fit at a word boundary.
+        """
+        from karaoke_gen.lyrics_transcriber.output.ass.style import build_karaoke_styles
+
+        karaoke_styles = self.styles.get("karaoke", {})
+        if not segments or not karaoke_styles.get("font"):
+            return segments
+        style = build_karaoke_styles(karaoke_styles, singers=[1], solo=True)[0]
+        style.Fontsize = self.font_size
+        if not style.Fontpath or not os.path.exists(style.Fontpath):
+            # Measuring with PIL's default font would under-measure; leave lines as is.
+            self.logger.warning(f"Font {style.Fontpath!r} not found; skipping line width check")
+            return segments
+
+        measurer = LyricsLine(segment=segments[0], screen_config=self.config, logger=self.logger)
+
+        def measure(text: str) -> float:
+            return measurer._measure_text(measurer._apply_case_transform(text), style)[0]
+
+        max_width = self.config.video_width * MAX_LINE_WIDTH_FRACTION
+        return SegmentResizer(logger=self.logger).split_to_width(segments, measure, max_width)
 
     def _translation_config(self, base: ScreenConfig) -> ScreenConfig:
         """Copy of ``base`` with taller line slots that fit a translation row under each line."""
