@@ -228,6 +228,8 @@ def recently_uploaded_sequences(
             ts = datetime.fromisoformat(created.replace("Z", "+00:00"))
         except (TypeError, ValueError):
             continue
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
         if ts >= cutoff:
             recent.add(seq)
     return recent
