@@ -96,7 +96,7 @@ Notifications are sent when:
 | Variable | Value | Description |
 |----------|-------|-------------|
 | `GDRIVE_FOLDER_ID` | `1laRKAyxo0v817SstfM5XkpbWiNKNAMSX` | Root folder of public share |
-| `NOTIFY_ON_SUCCESS` | `true` | Send daily "all clear" summary |
+| `NOTIFY_ON_SUCCESS` | `false` (prod) | Send an "all clear" email on every clean run; off in prod because the post-job trigger runs after every job |
 | `EMAIL_TO` | `gen@nomadkaraoke.com` | Email recipient |
 | `EMAIL_FROM` | `gen@nomadkaraoke.com` | Email sender |
 | `IN_FLIGHT_GRACE_MINUTES` | `30` (default) | Tracks with any file created in Drive this recently count as still uploading and are left out of the gap check |
