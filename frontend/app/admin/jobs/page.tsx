@@ -1910,7 +1910,12 @@ function AdminJobsPageContent() {
                             <span className="text-red-500">{deleteOutputsResult.deleted_services.gdrive.error}</span>
                           )}
                           {(deleteOutputsResult.deleted_services.gdrive.status === "failed" || deleteOutputsResult.deleted_services.gdrive.status === "partial") && (
-                            <span className="text-red-500">{deleteOutputsResult.deleted_services.gdrive.reason || deleteOutputsResult.deleted_services.gdrive.error || "Delete failed, check the job logs"}</span>
+                            <span className="text-red-500">{
+                              deleteOutputsResult.deleted_services.gdrive.files &&
+                              Object.values(deleteOutputsResult.deleted_services.gdrive.files).some((ok) => !ok)
+                                ? `Not deleted: ${Object.entries(deleteOutputsResult.deleted_services.gdrive.files).filter(([, ok]) => !ok).map(([k]) => k).join(", ")}`
+                                : deleteOutputsResult.deleted_services.gdrive.reason || deleteOutputsResult.deleted_services.gdrive.error || "Delete failed, check the job logs"
+                            }</span>
                           )}
                         </div>
                       </div>

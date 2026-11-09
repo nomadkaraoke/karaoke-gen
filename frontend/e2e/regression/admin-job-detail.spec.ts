@@ -694,8 +694,8 @@ test.describe('Admin Job Detail Page', () => {
     // Should show Dropbox success
     await expect(page.getByText(/NK001.*Test Artist.*Test Song/)).toBeVisible();
 
-    // A partial Drive delete with no message still says something
-    await expect(page.getByText('Delete failed, check the job logs')).toBeVisible();
+    // A partial Drive delete names the file(s) left behind
+    await expect(page.getByText('Not deleted: cdg')).toBeVisible();
   });
 
   test('delete outputs button is disabled when outputs already deleted', async ({ page }) => {
