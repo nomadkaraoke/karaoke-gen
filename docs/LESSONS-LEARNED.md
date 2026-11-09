@@ -2540,3 +2540,23 @@ exactly like the old path. Kill switch: `AUTO_APPROVAL_AUDIO_HOLD_ENABLED`.
 Lesson: an async "second chance" that only runs when no human has touched the
 job will lose that race to a fast human. Hold the human-facing state until the
 automatic decision is final, rather than racing it.
+
+## Character limits don't stop libass wrapping a line into the row below (2026-11-09, v0.295.1)
+
+NOMAD-1779 shipped with two lyric lines drawn on top of each other near the end. The lines
+("Mm- mm- mm, mm- …") passed the 40-character `max_line_length` but are made of wide glyphs:
+~3890px on the 3840px frame. libass wraps an over-wide event by itself, and since rows are
+exactly one line-height apart, the wrapped half lands on the next row's lyrics.
+
+- `SubtitlesGenerator.generate_ass` now measures every line in the style font (via
+  `LyricsLine._measure_text`, which scales fonts the way libass does, see `ass_font_scale`)
+  and splits any line wider than `MAX_LINE_WIDTH_FRACTION` (94%) of the frame at a word
+  boundary (`SegmentResizer.split_to_width`, prefers phrase-ending punctuation). It applies to
+  every ASS render: main, portrait, theme previews.
+- PIL font size ≠ libass font size: libass sizes by ascender+descender, so Avenir Next Bold
+  at 250 draws ~0.73× as wide as `ImageFont.truetype(path, 250)`. Measure through
+  `_measure_text`, never raw PIL.
+- Scope at the time: 1 of 309 completed jobs since 2026-09-10 had an overlap; 4 more had a
+  line that wrapped into an empty row.
+- `tests/unit/lyrics_transcriber/output/test_line_width_split.py` renders with real libass and
+  asserts each lyric event draws exactly one row.
