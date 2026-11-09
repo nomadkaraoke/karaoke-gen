@@ -581,8 +581,8 @@ test.describe('Admin Job Detail Page', () => {
       job_id: 'test-job-123',
       message: 'All outputs deleted successfully',
       deleted_services: {
-        youtube: { status: 'deleted', video_id: 'xyz789' },
-        dropbox: { status: 'deleted', path: '/Karaoke/NK001 - Test Artist - Test Song' },
+        youtube: { status: 'success', video_id: 'xyz789' },
+        dropbox: { status: 'success', path: '/Karaoke/NK001 - Test Artist - Test Song' },
         gdrive: { status: 'skipped', reason: 'No Google Drive files found' },
       },
       cleared_state_data: ['youtube_url', 'youtube_video_id', 'dropbox_link', 'brand_code'],
@@ -653,8 +653,8 @@ test.describe('Admin Job Detail Page', () => {
       message: 'Some outputs could not be deleted',
       deleted_services: {
         youtube: { status: 'error', error: 'Video not found or already deleted' },
-        dropbox: { status: 'deleted', path: '/Karaoke/NK001 - Test Artist - Test Song' },
-        gdrive: { status: 'skipped', reason: 'No Google Drive files found' },
+        dropbox: { status: 'success', path: '/Karaoke/NK001 - Test Artist - Test Song' },
+        gdrive: { status: 'partial', files: { mp4: true, cdg: false } },
       },
       cleared_state_data: ['dropbox_link', 'brand_code'],
       outputs_deleted_at: '2026-01-15T10:00:00Z',
@@ -693,6 +693,9 @@ test.describe('Admin Job Detail Page', () => {
 
     // Should show Dropbox success
     await expect(page.getByText(/NK001.*Test Artist.*Test Song/)).toBeVisible();
+
+    // A partial Drive delete with no message still says something
+    await expect(page.getByText('Delete failed, check the job logs')).toBeVisible();
   });
 
   test('delete outputs button is disabled when outputs already deleted', async ({ page }) => {

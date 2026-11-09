@@ -1835,7 +1835,7 @@ function AdminJobsPageContent() {
                     {/* YouTube */}
                     <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
                       <div className={`w-2 h-2 rounded-full mt-1.5 ${
-                        deleteOutputsResult.deleted_services.youtube.status === "deleted"
+                        deleteOutputsResult.deleted_services.youtube.status === "success"
                           ? "bg-green-500"
                           : deleteOutputsResult.deleted_services.youtube.status === "skipped"
                             ? "bg-gray-400"
@@ -1844,7 +1844,7 @@ function AdminJobsPageContent() {
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-sm">YouTube</div>
                         <div className="text-xs text-muted-foreground">
-                          {deleteOutputsResult.deleted_services.youtube.status === "deleted" && (
+                          {deleteOutputsResult.deleted_services.youtube.status === "success" && (
                             <>Deleted video: <code className="text-xs bg-muted px-1 rounded">{deleteOutputsResult.deleted_services.youtube.video_id}</code></>
                           )}
                           {deleteOutputsResult.deleted_services.youtube.status === "skipped" && (
@@ -1853,6 +1853,9 @@ function AdminJobsPageContent() {
                           {deleteOutputsResult.deleted_services.youtube.status === "error" && (
                             <span className="text-red-500">{deleteOutputsResult.deleted_services.youtube.error}</span>
                           )}
+                          {(deleteOutputsResult.deleted_services.youtube.status === "failed" || deleteOutputsResult.deleted_services.youtube.status === "partial") && (
+                            <span className="text-red-500">{deleteOutputsResult.deleted_services.youtube.reason || deleteOutputsResult.deleted_services.youtube.error || "Delete failed, check the job logs"}</span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1860,7 +1863,7 @@ function AdminJobsPageContent() {
                     {/* Dropbox */}
                     <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
                       <div className={`w-2 h-2 rounded-full mt-1.5 ${
-                        deleteOutputsResult.deleted_services.dropbox.status === "deleted"
+                        deleteOutputsResult.deleted_services.dropbox.status === "success"
                           ? "bg-green-500"
                           : deleteOutputsResult.deleted_services.dropbox.status === "skipped"
                             ? "bg-gray-400"
@@ -1869,7 +1872,7 @@ function AdminJobsPageContent() {
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-sm">Dropbox</div>
                         <div className="text-xs text-muted-foreground">
-                          {deleteOutputsResult.deleted_services.dropbox.status === "deleted" && (
+                          {deleteOutputsResult.deleted_services.dropbox.status === "success" && (
                             <>Deleted folder: <code className="text-xs bg-muted px-1 rounded break-all">{deleteOutputsResult.deleted_services.dropbox.path}</code></>
                           )}
                           {deleteOutputsResult.deleted_services.dropbox.status === "skipped" && (
@@ -1878,6 +1881,9 @@ function AdminJobsPageContent() {
                           {deleteOutputsResult.deleted_services.dropbox.status === "error" && (
                             <span className="text-red-500">{deleteOutputsResult.deleted_services.dropbox.error}</span>
                           )}
+                          {(deleteOutputsResult.deleted_services.dropbox.status === "failed" || deleteOutputsResult.deleted_services.dropbox.status === "partial") && (
+                            <span className="text-red-500">{deleteOutputsResult.deleted_services.dropbox.reason || deleteOutputsResult.deleted_services.dropbox.error || "Delete failed, check the job logs"}</span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1885,7 +1891,7 @@ function AdminJobsPageContent() {
                     {/* Google Drive */}
                     <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
                       <div className={`w-2 h-2 rounded-full mt-1.5 ${
-                        deleteOutputsResult.deleted_services.gdrive.status === "deleted"
+                        deleteOutputsResult.deleted_services.gdrive.status === "success"
                           ? "bg-green-500"
                           : deleteOutputsResult.deleted_services.gdrive.status === "skipped"
                             ? "bg-gray-400"
@@ -1894,7 +1900,7 @@ function AdminJobsPageContent() {
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-sm">Google Drive</div>
                         <div className="text-xs text-muted-foreground">
-                          {deleteOutputsResult.deleted_services.gdrive.status === "deleted" && deleteOutputsResult.deleted_services.gdrive.files && (
+                          {deleteOutputsResult.deleted_services.gdrive.status === "success" && deleteOutputsResult.deleted_services.gdrive.files && (
                             <>Deleted {Object.keys(deleteOutputsResult.deleted_services.gdrive.files).length} file(s)</>
                           )}
                           {deleteOutputsResult.deleted_services.gdrive.status === "skipped" && (
@@ -1902,6 +1908,9 @@ function AdminJobsPageContent() {
                           )}
                           {deleteOutputsResult.deleted_services.gdrive.status === "error" && (
                             <span className="text-red-500">{deleteOutputsResult.deleted_services.gdrive.error}</span>
+                          )}
+                          {(deleteOutputsResult.deleted_services.gdrive.status === "failed" || deleteOutputsResult.deleted_services.gdrive.status === "partial") && (
+                            <span className="text-red-500">{deleteOutputsResult.deleted_services.gdrive.reason || deleteOutputsResult.deleted_services.gdrive.error || "Delete failed, check the job logs"}</span>
                           )}
                         </div>
                       </div>

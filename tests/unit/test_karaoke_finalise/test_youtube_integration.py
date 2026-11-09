@@ -473,6 +473,25 @@ def test_delete_youtube_video_failure(mock_auth, finaliser_for_yt, mock_youtube_
     finaliser_for_yt.logger.error.assert_any_call(f"Failed to delete YouTube video with ID {video_id}: API Error")
 
 @patch.object(KaraokeFinalise, 'authenticate_youtube')
+def test_delete_youtube_video_already_gone_404_counts_as_deleted(mock_auth, finaliser_for_yt, mock_youtube_service):
+    """A 404 means the video was already removed (e.g. in YouTube Studio): success, not failure."""
+    from googleapiclient.errors import HttpError
+    mock_auth.return_value = mock_youtube_service
+    resp = MagicMock(status=404, reason="Not Found")
+    mock_youtube_service.videos.return_value.delete.return_value.execute.side_effect = HttpError(resp, b"{}")
+    assert finaliser_for_yt.delete_youtube_video("gone_video") is True
+    finaliser_for_yt.logger.error.assert_not_called()
+
+@patch.object(KaraokeFinalise, 'authenticate_youtube')
+def test_delete_youtube_video_403_still_fails(mock_auth, finaliser_for_yt, mock_youtube_service):
+    """Other HTTP errors (e.g. 403 wrong channel) are still failures."""
+    from googleapiclient.errors import HttpError
+    mock_auth.return_value = mock_youtube_service
+    resp = MagicMock(status=403, reason="Forbidden")
+    mock_youtube_service.videos.return_value.delete.return_value.execute.side_effect = HttpError(resp, b"{}")
+    assert finaliser_for_yt.delete_youtube_video("other_video") is False
+
+@patch.object(KaraokeFinalise, 'authenticate_youtube')
 def test_delete_youtube_video_dry_run(mock_auth, finaliser_for_yt, mock_youtube_service):
     """Test video deletion dry run."""
     finaliser_for_yt.dry_run = True
