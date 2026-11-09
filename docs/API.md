@@ -1105,6 +1105,7 @@ missing from it.
   candidates or in one more Spotify lookup of the AI's song. Otherwise it comes back
   `confident: false` with reason "… [unconfirmed: not in catalog or Spotify]". Clients show that as
   "Did you mean…?" and never apply it.
+- Every live result is kept forever by decide (Firestore query cache + BigQuery `spotify_live_tracks`), and kn-data-sync adds those songs to the daily song-id export. So a song looked up once is known to the kjbox on-device matcher, decide's song search and the mobile app's offline index from the next build on (v0.294.2).
 - Spotify unavailable means no evidence, so AI corrections aren't confident. That is conservative on
   purpose. Incident: kjbox 2026-11-05, job `f01c9997`, "Roll of Dice" became "Roll of the Dice".
 

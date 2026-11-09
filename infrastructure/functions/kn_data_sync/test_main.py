@@ -137,3 +137,27 @@ def test_song_id_sql_uses_listenbrainz_and_keeps_the_four_columns():
         assert f"`p.d.{table}`" in sql
     # the device's build_song_id_db.py reads exactly these columns, in this order
     assert "SELECT artist, title, popularity, karaoke FROM mb_kept" in sql
+
+
+def test_export_adds_live_spotify_songs_when_the_table_exists(clients):
+    bq, _gcs = clients
+    bq.get_table.return_value = object()
+    main._export_song_id_index()
+    sql = bq.query.call_args[0][0]
+    assert "`nomadkaraoke.karaoke_decide.spotify_live_tracks`" in sql
+    assert sql.rstrip().endswith("LEFT JOIN art ON art.name_normalized = sl.na")
+    assert "{" not in sql.split(" AS ", 1)[1].replace("{project}", "")   # placeholders filled
+
+
+def test_export_skips_live_spotify_songs_before_the_table_exists(clients):
+    from google.api_core.exceptions import NotFound
+    bq, _gcs = clients
+    bq.get_table.side_effect = NotFound("no table")
+    main._export_song_id_index()
+    assert "spotify_live_tracks" not in bq.query.call_args[0][0]
+
+
+def test_live_union_keeps_the_four_columns_and_estimates_popularity():
+    union = main.SPOTIFY_LIVE_UNION.format(project="p", dataset="d")
+    assert "{" not in union and "`p.d.spotify_live_tracks`" in union
+    assert union.strip().startswith("UNION ALL\nSELECT sl.a, sl.t, COALESCE(CAST(LEAST(art.apop * 0.8, 50) AS INT64), 30), 0")

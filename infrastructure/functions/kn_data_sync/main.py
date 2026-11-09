@@ -36,7 +36,7 @@ DATASET_ID = "karaoke_decide"
 
 # kjbox song-identification index: every song a singer might mean, exported daily
 # after the KN refresh and downloaded by the NomadPC's nomad-catalog-sync. Design:
-# kjbox docs/SONG-IDENTIFICATION.md. Rows from three sources, merged/deduped on the
+# kjbox docs/SONG-IDENTIFICATION.md. Rows from these sources, merged/deduped on the
 # device (scripts/build_song_id_db.py keeps the highest popularity per song):
 #   - MusicBrainz recordings (weekly-refreshed by karaoke-decide's mb-refresh — the
 #     source that keeps NEW songs coming). Kept when Spotify track popularity >= 30
@@ -48,6 +48,7 @@ DATASET_ID = "karaoke_decide"
 #     (an estimate must not outrank a measured score).
 #   - the static July 2025 Spotify snapshot (popularity >= 30)
 #   - every KaraokeNerds song (daily; karaoke = 1)
+#   - every song a live Spotify search returned (SPOTIFY_LIVE_UNION below)
 # ListenBrainz (karaoke-decide's lb-refresh, fortnightly dumps) is mapped onto Spotify's
 # 0-100 scale per stats range: score = offset + slope * log10(listeners), fitted to the
 # median Spotify popularity of songs that have both (2026-09-29; e.g. 100 this_year
@@ -117,6 +118,26 @@ kn AS (
 SELECT artist, title, popularity, karaoke FROM mb_kept
 UNION ALL SELECT sp.best.a, sp.best.t, sp.p, 0 FROM sp
 UNION ALL SELECT a, t, CAST(NULL AS INT64), 1 FROM kn
+"""
+
+# Every song a live Spotify search ever returned (karaoke-decide keeps them forever in
+# `spotify_live_tracks`, 2026-11-08), so a song someone looked up once, e.g. a 2025 release
+# missing from the July 2025 snapshot and MusicBrainz, is in the index from then on. The API
+# has no popularity, so the estimate is the D5a one: 0.8 x the artist's popularity capped at 50,
+# else 30. Appended only when the table exists (decide creates it on the first live search).
+SPOTIFY_LIVE_TABLE = "spotify_live_tracks"
+SPOTIFY_LIVE_UNION = r"""
+UNION ALL
+SELECT sl.a, sl.t, COALESCE(CAST(LEAST(art.apop * 0.8, 50) AS INT64), 30), 0
+FROM (
+  SELECT ANY_VALUE(artist_name) a, ANY_VALUE(track_name) t,
+         TRIM(REGEXP_REPLACE(REGEXP_REPLACE(la, r'[^a-z0-9 ]', ' '), r' +', ' ')) na
+  FROM (SELECT artist_name, track_name, LOWER(artist_name) la, LOWER(track_name) lt
+        FROM `{project}.{dataset}.spotify_live_tracks`
+        WHERE artist_name IS NOT NULL AND track_name IS NOT NULL
+          AND TRIM(artist_name) != '' AND TRIM(track_name) != '')
+  GROUP BY la, lt) sl
+LEFT JOIN art ON art.name_normalized = sl.na
 """
 
 # API endpoints
@@ -256,6 +277,15 @@ def _load_community_to_bigquery(raw_bytes: bytes) -> int:
     return load_job.output_rows
 
 
+def _table_exists(client, table: str) -> bool:
+    from google.api_core.exceptions import NotFound
+    try:
+        client.get_table(f"{GCP_PROJECT_ID}.{DATASET_ID}.{table}")
+        return True
+    except NotFound:
+        return False
+
+
 def _export_song_id_index() -> dict:
     """EXPORT DATA the song-identification index to GCS + write the manifest.
 
@@ -267,6 +297,10 @@ def _export_song_id_index() -> dict:
     folder = f"{SONG_ID_PREFIX}/{run}"
     client = bigquery.Client(project=GCP_PROJECT_ID)
     select = SONG_ID_SQL.format(project=GCP_PROJECT_ID, dataset=DATASET_ID)
+    if _table_exists(client, SPOTIFY_LIVE_TABLE):
+        select = select.rstrip() + "\n" + SPOTIFY_LIVE_UNION.format(project=GCP_PROJECT_ID, dataset=DATASET_ID)
+    else:
+        logger.info("song-id export: %s not created yet, skipping live Spotify songs", SPOTIFY_LIVE_TABLE)
     export = (
         f"EXPORT DATA OPTIONS(uri='gs://{GCS_BUCKET}/{folder}/songs-*.tsv.gz', format='CSV', "
         "field_delimiter='\t', header=false, compression='GZIP', overwrite=true) AS " + select
