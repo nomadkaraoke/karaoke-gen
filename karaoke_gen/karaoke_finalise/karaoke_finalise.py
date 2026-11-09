@@ -504,6 +504,11 @@ class KaraokeFinalise:
             self.logger.info(f"Successfully deleted YouTube video with ID: {video_id}")
             return True
         except Exception as e:
+            # 404 = the video is already gone (e.g. removed in YouTube Studio).
+            # The goal of the delete is met, so report success, not failure.
+            if getattr(getattr(e, "resp", None), "status", None) == 404:
+                self.logger.warning(f"YouTube video {video_id} not found; treating as already deleted")
+                return True
             self.logger.error(f"Failed to delete YouTube video with ID {video_id}: {e}")
             return False
 
