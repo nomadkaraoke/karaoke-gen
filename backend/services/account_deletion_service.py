@@ -260,6 +260,20 @@ class AccountDeletionService:
     def _owned_jobs(self, email: str) -> List[Any]:
         return list(self._jobs().where(filter=FieldFilter("user_email", "==", email)).stream())
 
+    def _archived_jobs(self, email: str) -> List[Any]:
+        """Deleted jobs kept in ``<jobs>_archive`` (system data, redacted like live jobs).
+
+        Single-field queries only, so the archive needs no composite index;
+        made-for-you is filtered here rather than in the query.
+        """
+        archive = self.db.collection(f"{self.jobs_collection}_archive")
+        owned = list(archive.where(filter=FieldFilter("user_email", "==", email)).stream())
+        customer = [
+            snap for snap in archive.where(filter=FieldFilter("customer_email", "==", email)).stream()
+            if (snap.to_dict() or {}).get("made_for_you")
+        ]
+        return owned + customer
+
     def _customer_jobs(self, email: str) -> List[Any]:
         """Made-for-you orders: owned by the admin, delivered to ``customer_email``."""
         return list(
@@ -442,10 +456,12 @@ class AccountDeletionService:
     def _scrub_jobs(self, email: str, deletion_id: str) -> dict:
         totals = {"jobs": 0, "input_objects_deleted": 0, "dropbox_links_revoked": 0}
         seen = set()
-        for snap in self._owned_jobs(email) + self._customer_jobs(email):
-            if snap.id in seen:
+        tagged = [("live", snap) for snap in self._owned_jobs(email) + self._customer_jobs(email)]
+        tagged += [("archive", snap) for snap in self._archived_jobs(email)]
+        for where, snap in tagged:
+            if (where, snap.id) in seen:
                 continue
-            seen.add(snap.id)
+            seen.add((where, snap.id))
             result = self._scrub_job(snap, email, deletion_id)
             totals["jobs"] += 1
             totals["input_objects_deleted"] += result["input_objects_deleted"]
@@ -517,7 +533,8 @@ class AccountDeletionService:
         if "client_ip" in (data.get("request_metadata") or {}):
             updates["request_metadata.client_ip"] = DELETE_FIELD
         if updates:
-            self._jobs().document(job_id).update(updates)
+            # snap.reference: the live job or its archived copy in <jobs>_archive.
+            snap.reference.update(updates)
         return {"input_objects_deleted": deleted, "dropbox_link_revoked": revoked}
 
     # Step 8

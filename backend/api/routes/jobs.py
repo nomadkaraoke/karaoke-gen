@@ -887,7 +887,12 @@ def delete_job(
                     detail=t(locale, "jobs.cleanupFailed", services=", ".join(incomplete)),
                 )
 
-        job_manager.delete_job(job_id, delete_files=delete_files)
+        job_manager.delete_job(
+            job_id,
+            delete_files=delete_files,
+            archived_by=auth_result.user_email,
+            reason="admin_delete" if auth_result.is_admin else "owner_delete",
+        )
 
         # A requests-board pick whose owner deleted the job goes back on the board (or is
         # removed if nobody backs it) instead of staying "in progress" on a dead job.
@@ -2810,7 +2815,10 @@ def cleanup_distribution(
     # Delete the job if requested
     if delete_job:
         try:
-            job_manager.delete_job(job_id, delete_files=True)
+            job_manager.delete_job(
+                job_id, delete_files=True, archived_by=auth_result.user_email,
+                reason="cleanup_distribution_delete",
+            )
             results["job_deleted"] = True
             logger.info(f"Deleted job {job_id} after distribution cleanup")
         except Exception as e:

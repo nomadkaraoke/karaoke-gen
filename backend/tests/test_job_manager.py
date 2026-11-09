@@ -515,6 +515,40 @@ class TestJobDeletion:
         mock_firestore_service.delete_job.assert_called_once_with("test123")
 
 
+    def test_delete_job_archives_first(self, job_manager, mock_firestore_service):
+        """The job is copied to jobs_archive before the doc is deleted."""
+        existing_job = Job(
+            job_id="test123", status=JobStatus.COMPLETE, progress=100,
+            created_at=datetime.now(UTC), updated_at=datetime.now(UTC), output_files={},
+        )
+        mock_firestore_service.get_job.return_value = existing_job
+        order = []
+        mock_firestore_service.archive_job.side_effect = lambda *a, **k: order.append("archive") or True
+        mock_firestore_service.delete_job.side_effect = lambda *a, **k: order.append("delete")
+
+        job_manager.delete_job("test123", archived_by="admin@nomadkaraoke.com", reason="admin_delete")
+
+        mock_firestore_service.archive_job.assert_called_once_with(
+            "test123", archived_by="admin@nomadkaraoke.com", reason="admin_delete"
+        )
+        assert order == ["archive", "delete"]
+
+    def test_delete_job_aborts_when_archive_fails(self, job_manager, mock_firestore_service):
+        """A job whose archive copy didn't land is never deleted."""
+        existing_job = Job(
+            job_id="test123", status=JobStatus.COMPLETE, progress=100,
+            created_at=datetime.now(UTC), updated_at=datetime.now(UTC), output_files={},
+        )
+        mock_firestore_service.get_job.return_value = existing_job
+        mock_firestore_service.archive_job.side_effect = RuntimeError("firestore down")
+
+        with pytest.raises(RuntimeError):
+            job_manager.delete_job("test123")
+
+        mock_firestore_service.delete_job.assert_not_called()
+        mock_firestore_service.delete_logs_subcollection.assert_not_called()
+
+
 class TestDeleteStateDataKeys:
     """Tests for delete_state_data_key and delete_state_data_keys methods.
 

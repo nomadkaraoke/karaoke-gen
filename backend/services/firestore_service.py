@@ -481,6 +481,56 @@ class FirestoreService:
             logger.error(f"Error deleting jobs by filter: {e}")
             raise
     
+    # Deleted jobs are archived here (forever) instead of being lost: the job doc
+    # plus its logs and audio-edit sessions, so a deleted job can still be debugged.
+    # Logs go under ``archived_logs`` without ``ttl_expiry``: the TTL policy on the
+    # ``logs`` collection group would otherwise expire them on the original schedule.
+    ARCHIVE_SUBCOLLECTIONS = {"logs": "archived_logs", "audio_edit_sessions": "audio_edit_sessions"}
+
+    @property
+    def archive_collection(self) -> str:
+        return f"{self.collection}_archive"
+
+    def archive_job(
+        self, job_id: str, archived_by: Optional[str] = None, reason: Optional[str] = None
+    ) -> bool:
+        """Copy a job (doc + subcollections) into the archive collection.
+
+        Returns False if the job doesn't exist. Raises on any write failure, so the
+        caller can refuse to delete a job whose archive copy didn't land.
+        """
+        src = self.db.collection(self.collection).document(job_id)
+        snap = src.get()
+        if not snap.exists:
+            return False
+        dest = self.db.collection(self.archive_collection).document(job_id)
+        data = snap.to_dict() or {}
+        data["archived_at"] = datetime.now(timezone.utc)
+        data["archived_by"] = archived_by
+        data["archive_reason"] = reason
+        dest.set(data)
+
+        copied = {}
+        for src_name, dest_name in self.ARCHIVE_SUBCOLLECTIONS.items():
+            count = 0
+            batch = self.db.batch()
+            pending = 0
+            for doc in src.collection(src_name).stream():
+                entry = doc.to_dict() or {}
+                entry.pop("ttl_expiry", None)
+                batch.set(dest.collection(dest_name).document(doc.id), entry)
+                pending += 1
+                count += 1
+                if pending >= 400:
+                    batch.commit()
+                    batch = self.db.batch()
+                    pending = 0
+            if pending:
+                batch.commit()
+            copied[src_name] = count
+        logger.info(f"Archived job {job_id} to {self.archive_collection} ({copied}) by {archived_by}: {reason}")
+        return True
+
     def delete_job(self, job_id: str) -> None:
         """Delete a job from Firestore."""
         try:
