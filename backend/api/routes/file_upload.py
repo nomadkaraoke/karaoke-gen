@@ -2824,7 +2824,9 @@ def get_style_upload_urls(
             raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
 
         # Owner, admin, or a member of the job's tenant portal
-        if not can_access_job(job, auth_result.user_email, auth_result.user_type == UserType.ADMIN):
+        if not can_access_job(
+            job, auth_result.user_email, auth_result.user_type == UserType.ADMIN, allow_ownerless=False
+        ):
             raise HTTPException(status_code=403, detail="Not authorized to modify this job")
 
         # Check cutoff - reject if job is too far along
@@ -2902,7 +2904,9 @@ def complete_style_uploads(
             raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
 
         # Owner, admin, or a member of the job's tenant portal
-        if not can_access_job(job, auth_result.user_email, auth_result.user_type == UserType.ADMIN):
+        if not can_access_job(
+            job, auth_result.user_email, auth_result.user_type == UserType.ADMIN, allow_ownerless=False
+        ):
             raise HTTPException(status_code=403, detail="Not authorized to modify this job")
 
         # Check cutoff

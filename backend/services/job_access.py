@@ -42,8 +42,14 @@ def can_access_job(
     job,
     user_email: Optional[str],
     is_admin: bool,
+    allow_ownerless: bool = True,
 ) -> bool:
-    """Whether a caller may view and act on ``job`` (see module docstring)."""
+    """Whether a caller may view and act on ``job`` (see module docstring).
+
+    ``allow_ownerless`` keeps each route's pre-existing stance on legacy jobs with
+    no ``user_email``: most routes (job routes, review auth) allowed them; the
+    style-upload routes did not, and pass False.
+    """
     if is_admin:
         return True
 
@@ -58,5 +64,5 @@ def can_access_job(
         # Someone else's job (or token auth without an email): no access.
         return False
 
-    # Legacy jobs without an owner stay accessible, as before.
-    return True
+    # Legacy jobs without an owner: unchanged per-route behaviour.
+    return allow_ownerless

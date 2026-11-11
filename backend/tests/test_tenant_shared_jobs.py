@@ -96,6 +96,13 @@ class TestCanAccessJob:
     def test_legacy_ownerless_job_still_accessible(self, tenant_service):
         assert job_access.can_access_job(_job(owner=None, tenant_id=""), OUTSIDER, False)
 
+    def test_ownerless_can_be_denied_per_route(self, tenant_service):
+        """Style-upload routes never allowed ownerless jobs to non-admins; keep that."""
+        assert not job_access.can_access_job(
+            _job(owner=None, tenant_id=""), OUTSIDER, False, allow_ownerless=False)
+        # ...but a tenant member still gets the tenant's ownerless jobs.
+        assert job_access.can_access_job(_job(owner=None), MEMBER, False, allow_ownerless=False)
+
 
 class TestListJobsOnTenantPortal:
     JOBS = [{"job_id": "bulk1", "user_email": "bulk@nomadkaraoke.com"},
