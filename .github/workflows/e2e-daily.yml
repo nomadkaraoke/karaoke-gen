@@ -48,7 +48,7 @@ jobs:
   # =========================================================================
   e2e-credit-purchase:
     name: "Stage 1: Credit Purchase"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # Playwright 1.57 can't install chromium on ubuntu-latest (26.04)
     timeout-minutes: 15
     if: ${{ github.event.inputs.skip_payment != 'true' && github.event.inputs.use_test_token != 'true' }}
     permissions:
@@ -442,7 +442,7 @@ jobs:
   # =========================================================================
   e2e-happy-path:
     name: "Stage 2: Happy Path"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # Playwright 1.57 can't install chromium on ubuntu-latest (26.04)
     timeout-minutes: 90
     needs: e2e-credit-purchase
     if: |
