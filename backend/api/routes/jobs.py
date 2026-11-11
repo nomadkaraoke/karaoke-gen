@@ -266,27 +266,15 @@ def _resolve_credits_charged_in_summary(data: Dict[str, Any]) -> Dict[str, Any]:
 
 def _check_job_ownership(job: Job, auth_result: AuthResult) -> bool:
     """
-    Check if the authenticated user owns the job or has admin access.
+    Check if the authenticated user may access the job: admin, owner, or a
+    member of the job's tenant portal (see backend/services/job_access.py).
 
     Returns:
         True if user can access the job, False otherwise
     """
-    # Admins can access all jobs
-    if auth_result.is_admin:
-        return True
+    from backend.services.job_access import can_access_job
 
-    # Check if user owns the job
-    if auth_result.user_email and job.user_email:
-        return auth_result.user_email.lower() == job.user_email.lower()
-
-    # If no user_email on auth (token auth without email), deny access to jobs with user_email
-    # This prevents token-based auth from accessing user jobs
-    if job.user_email:
-        return False
-
-    # Legacy jobs without user_email - allow access for backward compatibility
-    # TODO: Consider restricting this in the future
-    return True
+    return can_access_job(job, auth_result.user_email, bool(auth_result.is_admin))
 
 
 class EditTrackRequest(BaseModel):
@@ -693,8 +681,9 @@ def list_jobs(
     """
     List jobs with optional filters.
 
-    Regular users only see their own jobs. Admins see all jobs.
-    Users on tenant portals only see jobs from their tenant.
+    Admins see all jobs. On the consumer portal users see only their own jobs.
+    On a tenant portal, members of that portal (its email allowlist) see all of the
+    tenant's jobs; jobs are always scoped to the portal's tenant.
 
     Args:
         status: Filter by job status (pending, complete, failed, etc.)
@@ -752,6 +741,14 @@ def list_jobs(
         # All jobs have tenant_id set: "" for consumer, "vocalstar"/etc for tenants.
         tenant_id = get_tenant_from_request(request)
         effective_tenant_id = tenant_id if tenant_id else ""
+
+        # Tenant portals are shared workspaces: a member of this portal sees all
+        # of the tenant's jobs, not just the ones they submitted (job_access.py).
+        if user_email_filter and tenant_id:
+            from backend.services.job_access import is_tenant_member
+
+            if is_tenant_member(tenant_id, user_email_filter):
+                user_email_filter = None
 
         # --- Summary mode: field-projected query returning dicts ---
         if fields == "summary":
@@ -3262,8 +3259,8 @@ async def rerender_with_current_theme(
     Regenerates title/end screens, the lyrics video, final encodes and CDG/TXT
     packages from the already-reviewed lyrics and instrumental selection — no
     review step. Used after a tenant edits their theme. Free (tenant jobs are
-    never charged); only the job owner (still on the tenant allowlist) or an
-    admin may trigger it.
+    never charged); any member of the job's tenant portal (on its allowlist —
+    tenant portals are shared workspaces) or an admin may trigger it.
     """
     locale = get_locale_from_request(http_request)
     job_manager = JobManager()

@@ -293,24 +293,21 @@ def require_review_auth_factory(job_id_param: str = "job_id"):
                 if not job:
                     raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
 
-                # Check ownership: admin can access all, users only their own jobs
-                if not auth_result.is_admin:
-                    if auth_result.user_email and job.user_email:
-                        if auth_result.user_email.lower() != job.user_email.lower():
-                            logger.warning(
-                                f"Review access denied: user {auth_result.user_email} "
-                                f"tried to access job {job_id} owned by {job.user_email}"
-                            )
-                            raise HTTPException(
-                                status_code=403,
-                                detail="You don't have permission to access this job's review"
-                            )
-                    elif job.user_email:
-                        # Token auth without email trying to access a job with owner
-                        raise HTTPException(
-                            status_code=403,
-                            detail="You don't have permission to access this job's review"
-                        )
+                # Admin, owner, or a member of the job's tenant portal
+                # (backend/services/job_access.py).
+                from backend.services.job_access import can_access_job
+
+                if not await asyncio.to_thread(
+                    can_access_job, job, auth_result.user_email, bool(auth_result.is_admin)
+                ):
+                    logger.warning(
+                        f"Review access denied: user {auth_result.user_email} "
+                        f"tried to access job {job_id} owned by {job.user_email}"
+                    )
+                    raise HTTPException(
+                        status_code=403,
+                        detail="You don't have permission to access this job's review"
+                    )
 
                 logger.info(f"Review access granted via full auth ({auth_result.user_type}) for job {job_id}")
                 # Who is reviewing — handlers record it on first open

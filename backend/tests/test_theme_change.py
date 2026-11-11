@@ -319,7 +319,8 @@ def test_save_reports_refreshed_and_outdated(client_for):
     assert body["refreshed_jobs"] == 3 and body["outdated_job_ids"] == ["a", "b"]
     assert body["theme_id"] == "randy-vild"
     refresh.assert_called_once_with("randy-vild", "randy-vild")
-    assert outdated.call_args.args == ("randy-vild", "randy-vild", "randyvild@gmail.com")
+    # Tenant portals are shared workspaces: members act on all the portal's tracks.
+    assert outdated.call_args.args == ("randy-vild", "randy-vild", None)
 
 
 def test_save_succeeds_even_if_follow_up_work_fails(client_for):
@@ -333,10 +334,12 @@ def test_save_succeeds_even_if_follow_up_work_fails(client_for):
     assert resp.json()["refreshed_jobs"] == 0 and resp.json()["outdated_job_ids"] == []
 
 
-def test_outdated_jobs_scope_member_vs_admin(client_for):
+def test_outdated_jobs_cover_whole_portal_for_members_and_admins(client_for):
+    """Tenant portals are shared workspaces: a member's outdated list covers every
+    track on the portal (not just their own), same as an admin's."""
     with patch.object(tenant_theme, "outdated_jobs", return_value={"theme_updated_at": None, "job_ids": ["a"]}) as od:
         assert client_for().get("/api/tenant/theme/outdated-jobs").json()["job_ids"] == ["a"]
-        assert od.call_args.args[2] == "randyvild@gmail.com"
+        assert od.call_args.args[2] is None
         client_for(email="andrew@nomadkaraoke.com").get("/api/tenant/theme/outdated-jobs")
         assert od.call_args.args[2] is None
 

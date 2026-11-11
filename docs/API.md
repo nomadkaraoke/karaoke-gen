@@ -268,6 +268,16 @@ Response includes:
 - `state_data` - Worker progress details
 - `timeline` - Processing history
 
+#### Tenant portals are shared workspaces
+
+Job access follows one rule (`backend/services/job_access.py`): admins can access every job, owners their own,
+and **anyone currently allowed to sign in to a tenant portal** (its `allowed_emails` / `allowed_email_domains`)
+can list, open, review, edit, re-render and delete **every job of that tenant**, whoever submitted it.
+Membership is re-checked on each request against the live tenant config (cached ~5 min), so removing someone
+from the allowlist removes their access. Inactive tenants and tenants without an allowlist share nothing.
+Consumer jobs (no tenant) stay private to their owner. `GET /api/jobs` on a tenant portal is always scoped to
+that tenant.
+
 #### List Jobs
 
 ```http
@@ -1485,8 +1495,8 @@ re-checks membership (`require_tenant_member`): non-members/spoofed headers → 
   render, so a user who is mid-review is never interrupted. `review_complete` and later jobs are left
   alone. `refreshed_jobs` counts the jobs updated. `outdated_job_ids` lists the caller's finished tracks
   made with an older theme, where "older" means the theme's `style_params.json` write time is later
-  than `theme_applied_at`, falling back to `created_at`. Members see their own tracks; admins see all
-  of the tenant's tracks. Editing a finished tenant track (`POST /api/jobs/{id}/edit`) also re-applies
+  than `theme_applied_at`, falling back to `created_at`. It covers all of the tenant's tracks, for
+  members and admins alike (tenant portals are shared workspaces). Editing a finished tenant track (`POST /api/jobs/{id}/edit`) also re-applies
   the current theme when the track's copy is outdated.
 - **Rerender-outdated** starts `POST /api/jobs/{id}/rerender` for every outdated track, **quietly**:
   the `theme_rerender.notify_customer=false` marker suppresses the per-track completion email/push.
@@ -2424,7 +2434,7 @@ DELETE /api/jobs/{job_id}?delete_files=true
 Authorization: Bearer ADMIN_TOKEN
 ```
 
-Admins can delete any job. Regular users can only delete their own jobs.
+Admins can delete any job. Regular users can delete their own jobs, and on a tenant portal any job of that tenant (see [Tenant portals are shared workspaces](#tenant-portals-are-shared-workspaces)).
 
 ### Audio Search Management (Admin)
 

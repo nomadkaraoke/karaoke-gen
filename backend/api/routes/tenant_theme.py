@@ -212,8 +212,10 @@ MAX_BULK_RERENDER = 20
 
 
 def _owner_scope(auth_result: AuthResult) -> Optional[str]:
-    """Admins act on all the portal's tracks; members only on their own."""
-    return None if auth_result.is_admin else auth_result.user_email
+    """Every caller here is a portal member (require_tenant_member), and tenant
+    portals are shared workspaces (backend/services/job_access.py), so theme
+    refresh/rerender covers all of the portal's tracks, whoever submitted them."""
+    return None
 
 
 @router.put("", response_model=SaveResponse)

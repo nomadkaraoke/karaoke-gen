@@ -22,6 +22,7 @@ from typing import Optional, List, Dict, Any, Tuple, Literal
 
 from pydantic import BaseModel, Field
 
+from backend.services.job_access import can_access_job
 from backend.models.job import JobCreate, JobStatus
 from backend.models.theme import ColorOverrides
 from backend.services.job_manager import JobManager
@@ -1585,10 +1586,9 @@ async def mark_uploads_complete(
         # an email — trusted API integrations creating jobs on behalf of a
         # body.user_email — keeps working, as before this check existed.)
         if (
-            not auth_result.is_admin
-            and auth_result.user_email
+            auth_result.user_email
             and job.user_email
-            and auth_result.user_email.lower() != job.user_email.lower()
+            and not can_access_job(job, auth_result.user_email, bool(auth_result.is_admin))
         ):
             raise HTTPException(status_code=403, detail=t(locale, "jobs.noPermissionModify"))
 
@@ -2823,10 +2823,9 @@ def get_style_upload_urls(
         if not job:
             raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
 
-        # Verify ownership (non-admin users can only modify their own jobs)
-        if auth_result.user_type != UserType.ADMIN:
-            if job.user_email != auth_result.user_email:
-                raise HTTPException(status_code=403, detail="Not authorized to modify this job")
+        # Owner, admin, or a member of the job's tenant portal
+        if not can_access_job(job, auth_result.user_email, auth_result.user_type == UserType.ADMIN):
+            raise HTTPException(status_code=403, detail="Not authorized to modify this job")
 
         # Check cutoff - reject if job is too far along
         try:
@@ -2902,10 +2901,9 @@ def complete_style_uploads(
         if not job:
             raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
 
-        # Verify ownership
-        if auth_result.user_type != UserType.ADMIN:
-            if job.user_email != auth_result.user_email:
-                raise HTTPException(status_code=403, detail="Not authorized to modify this job")
+        # Owner, admin, or a member of the job's tenant portal
+        if not can_access_job(job, auth_result.user_email, auth_result.user_type == UserType.ADMIN):
+            raise HTTPException(status_code=403, detail="Not authorized to modify this job")
 
         # Check cutoff
         try:

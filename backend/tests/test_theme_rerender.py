@@ -330,10 +330,18 @@ class TestRerenderRoute:
         assert start.await_args.kwargs["theme_id"] == "randy-vild"
         assert start.await_args.kwargs["requested_by"] == "randy@example.com"
 
-    def test_non_owner_forbidden(self, client):
-        resp, start = _call(client, _auth(email="someone@else.com"), _job(), _tenant())
+    def test_non_member_forbidden(self, client):
+        tenant = _tenant()
+        tenant.is_email_allowed.side_effect = lambda e: e == "randy@example.com"
+        resp, start = _call(client, _auth(email="someone@else.com"), _job(), tenant)
         assert resp.status_code == 403
         start.assert_not_awaited()
+
+    def test_teammate_on_allowlist_allowed(self, client):
+        """Tenant portals are shared: another member may re-render a teammate's track."""
+        resp, start = _call(client, _auth(email="colleague@randy.com"), _job(), _tenant())
+        assert resp.status_code == 200
+        start.assert_awaited_once()
 
     def test_owner_removed_from_allowlist_forbidden(self, client):
         resp, start = _call(client, _auth(), _job(), _tenant(allowed=False))
