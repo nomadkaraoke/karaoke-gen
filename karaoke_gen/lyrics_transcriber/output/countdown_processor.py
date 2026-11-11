@@ -98,13 +98,13 @@ class CountdownProcessor:
         Same rule as ``process``/``add_countdown_to_lyrics_if_needed`` but on the
         plain ``corrected_segments`` dicts a review client sends, so an API can
         tell the client how far the preview's timeline is shifted without
-        rebuilding a CorrectionResult. 0.0 if no countdown applies (or one is
-        already present).
+        rebuilding a CorrectionResult. A countdown that is already present still
+        means a shifted timeline (and padded audio). 0.0 if no countdown applies.
         """
         if not segments:
             return 0.0
         if (segments[0] or {}).get("text") == cls.COUNTDOWN_TEXT:
-            return 0.0
+            return cls.COUNTDOWN_PADDING_SECONDS
         for segment in segments:
             words = (segment or {}).get("words") or []
             if words:
@@ -124,13 +124,17 @@ class CountdownProcessor:
 
         Used by the review preview, which must match the final render but pads
         its audio separately (or has the encoder use pre-padded audio).
-        Already-countdown-processed results are returned unchanged.
+        Already-countdown-processed results are returned unchanged, but still
+        report the padding: their timings are already shifted, so the audio
+        must be padded to match.
 
         Returns:
             (possibly modified CorrectionResult, padding seconds the caller must
-            prepend to the audio — 0.0 when no countdown was added)
+            prepend to the audio — 0.0 when the song has no countdown intro)
         """
-        if self.has_countdown(correction_result) or not self._needs_countdown(correction_result):
+        if self.has_countdown(correction_result):
+            return correction_result, self.COUNTDOWN_PADDING_SECONDS
+        if not self._needs_countdown(correction_result):
             return correction_result, 0.0
         return self._add_countdown_to_result(correction_result), self.COUNTDOWN_PADDING_SECONDS
 

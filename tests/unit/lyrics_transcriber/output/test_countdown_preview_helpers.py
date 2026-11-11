@@ -37,10 +37,12 @@ class TestPaddingForSegmentsData:
         segs = [{"text": "", "words": []}, {"text": "hi", "words": [{"text": "hi", "start_time": 1.0}]}]
         assert CountdownProcessor.padding_for_segments_data(segs) == 3.0
 
-    def test_already_counted_down_needs_none(self):
+    def test_already_counted_down_still_reports_offset(self):
+        """Timings are already shifted, so the timeline offset is still 3s."""
         segs = [{"text": CountdownProcessor.COUNTDOWN_TEXT,
-                 "words": [{"text": CountdownProcessor.COUNTDOWN_TEXT, "start_time": 0.1}]}]
-        assert CountdownProcessor.padding_for_segments_data(segs) == 0.0
+                 "words": [{"text": CountdownProcessor.COUNTDOWN_TEXT, "start_time": 0.1}]},
+                {"text": "hi", "words": [{"text": "hi", "start_time": 3.4}]}]
+        assert CountdownProcessor.padding_for_segments_data(segs) == 3.0
 
     def test_empty_or_malformed(self):
         assert CountdownProcessor.padding_for_segments_data(None) == 0.0
@@ -67,17 +69,24 @@ class TestAddCountdownToLyricsIfNeeded:
         assert padding == 0.0
         assert result is original
 
-    def test_idempotent(self, tmp_path):
+    def test_idempotent_but_still_needs_padded_audio(self, tmp_path):
+        """A result that already has the countdown isn't shifted again, but its
+        audio must still be padded to match the shifted timings."""
         cp = CountdownProcessor(cache_dir=str(tmp_path))
         once, _ = cp.add_countdown_to_lyrics_if_needed(_result(0.4))
         twice, padding = cp.add_countdown_to_lyrics_if_needed(once)
-        assert padding == 0.0
+        assert padding == 3.0
         assert twice is once
+        assert twice.corrected_segments[1].words[0].start_time == 3.4
 
     def test_agrees_with_dict_helper(self, tmp_path):
         cp = CountdownProcessor(cache_dir=str(tmp_path))
         for start in (0.0, 2.99, 3.0, 7.5):
             r = _result(start)
-            _, padding = cp.add_countdown_to_lyrics_if_needed(r)
+            out, padding = cp.add_countdown_to_lyrics_if_needed(r)
             segs = [s.to_dict() for s in r.corrected_segments]
             assert CountdownProcessor.padding_for_segments_data(segs) == padding
+            # ...and on the already-processed result too.
+            _, again = cp.add_countdown_to_lyrics_if_needed(out)
+            assert CountdownProcessor.padding_for_segments_data(
+                [s.to_dict() for s in out.corrected_segments]) == again

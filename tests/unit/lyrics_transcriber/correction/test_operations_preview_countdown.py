@@ -104,3 +104,23 @@ def test_countdown_previews_get_a_fresh_hash(run_preview):
     result_late, *_ = run_preview(late, ass_only=True)
     legacy_late = hashlib.md5(json.dumps(late, sort_keys=True).encode("utf-8")).hexdigest()[:12]
     assert result_late["preview_hash"] == legacy_late
+
+
+def test_submitted_countdown_is_not_doubled_but_audio_is_padded(run_preview):
+    """Corrections that already carry the countdown (timings shifted) must not be
+    shifted again, but the audio must still be padded or lyrics run 3s early."""
+    data = {
+        "corrections": [],
+        "corrected_segments": [
+            {"id": "c", "text": CountdownProcessor.COUNTDOWN_TEXT, "start_time": 0.1, "end_time": 2.9,
+             "words": [{"id": "cw", "text": CountdownProcessor.COUNTDOWN_TEXT, "start_time": 0.1, "end_time": 2.9}]},
+            {"id": "s1", "text": "hello", "start_time": 3.4, "end_time": 3.9,
+             "words": [{"id": "w1", "text": "hello", "start_time": 3.4, "end_time": 3.9}]},
+        ],
+    }
+    result, captured, pad_calls, padded = run_preview(data, ass_only=False)
+    assert result["countdown_padding_seconds"] == 3.0
+    segs = captured["correction"].corrected_segments
+    assert [s.text for s in segs] == [CountdownProcessor.COUNTDOWN_TEXT, "hello"]
+    assert segs[1].words[0].start_time == pytest.approx(3.4)
+    assert captured["audio"] == padded
