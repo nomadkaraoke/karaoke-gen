@@ -477,6 +477,8 @@ Content-Type: application/json
 
 Generates a preview video during review. Returns `{"status": "success", "preview_hash": "..."}` when the video is immediately available (cache hit — the hash is deterministic over the correction data — or local render), or `{"status": "generating", "preview_hash": "..."}` when encoding continues in the background on a GCE worker. In the generating case, poll the status endpoint below; the request never waits for the encoder (cold-starting a worker VM can take minutes, longer than Cloudflare's edge timeout).
 
+Both responses also carry `countdown_padding_seconds` (3.0 or 0.0). When the first word starts within 3s the preview gets the same "3... 2... 1..." intro as the final render: lyrics shifted and audio padded by that many seconds, so video time = song time + `countdown_padding_seconds`. Clients syncing other audio (e.g. instrumental stems) to the preview must subtract it.
+
 The `use_background_image` option controls whether the preview renders with the theme's background image (slower, ~30-60s) or a solid black background (faster, ~10s). Defaults to black background for speed.
 
 #### Poll Preview Status

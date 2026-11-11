@@ -1835,7 +1835,9 @@ class TestPreviewVideoAsyncFlow:
         job.title = "Test Song"
         return job
 
-    def _run_gce_preview(self, mock_job, *, mp4_exists, background_mock):
+    def _run_gce_preview(self, mock_job, *, mp4_exists, background_mock,
+                         updated_data=None, countdown_padding_seconds=None,
+                         countdown_processor_cls=None):
         """Run generate_preview_video with GCE enabled and heavy deps mocked."""
         import asyncio
         from backend.api.routes.review import generate_preview_video
@@ -1855,7 +1857,7 @@ class TestPreviewVideoAsyncFlow:
         async def _run():
             result = await generate_preview_video(
                 job_id=mock_job.job_id,
-                updated_data={},
+                updated_data=updated_data if updated_data is not None else {},
                 auth_info=("user@test.com", "job_owner"),
             )
             # Let any create_task'd background coroutine start
@@ -1877,6 +1879,14 @@ class TestPreviewVideoAsyncFlow:
                 "preview_hash": "hash123",
                 "ass_path": "/tmp/preview.ass",
             }
+            if countdown_padding_seconds is not None:
+                mock_co.generate_preview_video.return_value["countdown_padding_seconds"] = countdown_padding_seconds
+            if countdown_processor_cls is not None:
+                with patch("backend.api.routes.review.CountdownProcessor") as mock_cp:
+                    mock_cp.padding_for_segments_data.side_effect = countdown_processor_cls.padding_for_segments_data
+                    mock_cp.return_value.create_padded_audio_only.return_value = "/tmp/audio_padded.flac"
+                    result = asyncio.run(_run())
+                return result, mock_storage, mock_co
             result = asyncio.run(_run())
         return result, mock_storage, mock_co
 
@@ -1886,7 +1896,7 @@ class TestPreviewVideoAsyncFlow:
         background_mock = AsyncMock()
         result, mock_storage, mock_co = self._run_gce_preview(
             mock_job, mp4_exists=True, background_mock=background_mock)
-        assert result == {"status": "success", "preview_hash": "hash123"}
+        assert result == {"status": "success", "preview_hash": "hash123", "countdown_padding_seconds": 0.0}
         background_mock.assert_not_called()
         # ASS is generated with ass_only=True (no local video render)
         assert mock_co.generate_preview_video.call_args.kwargs["ass_only"] is True
@@ -1897,7 +1907,7 @@ class TestPreviewVideoAsyncFlow:
         background_mock = AsyncMock()
         result, mock_storage, _ = self._run_gce_preview(
             mock_job, mp4_exists=False, background_mock=background_mock)
-        assert result == {"status": "generating", "preview_hash": "hash123"}
+        assert result == {"status": "generating", "preview_hash": "hash123", "countdown_padding_seconds": 0.0}
         background_mock.assert_called_once()
         kwargs = background_mock.call_args.kwargs
         assert kwargs["preview_hash"] == "hash123"
@@ -1907,6 +1917,29 @@ class TestPreviewVideoAsyncFlow:
         # Stale error marker from a previous failed attempt must be cleared
         mock_storage.delete_file.assert_called_once_with(
             "jobs/job-preview-async/previews/hash123.error.json", ignore_missing=True)
+        # No countdown → the encoder uses the original input audio as-is.
+        assert kwargs["encode_kwargs"]["audio_gcs_path"] == \
+            "gs://test-bucket/jobs/job-preview-async/audio/input.flac"
+
+    def test_countdown_song_uploads_padded_audio_and_reports_offset(self, mock_job):
+        """Vocals within 3s: the preview's ASS carries the countdown intro (lyrics
+        shifted +3s), so the encoder must get audio padded by the same 3s, and the
+        client must be told the offset to keep the stem/playhead aligned."""
+        from karaoke_gen.lyrics_transcriber.output.countdown_processor import CountdownProcessor
+        updated_data = {"corrected_segments": [
+            {"text": "hello", "words": [{"text": "hello", "start_time": 0.4, "end_time": 0.9}]},
+        ]}
+        background_mock = AsyncMock()
+        result, mock_storage, _ = self._run_gce_preview(
+            mock_job, mp4_exists=False, background_mock=background_mock,
+            updated_data=updated_data, countdown_padding_seconds=3.0,
+            countdown_processor_cls=CountdownProcessor)
+        assert result == {"status": "generating", "preview_hash": "hash123", "countdown_padding_seconds": 3.0}
+        mock_storage.upload_file.assert_any_call(
+            "/tmp/audio_padded.flac", "jobs/job-preview-async/previews/hash123_audio.flac")
+        kwargs = background_mock.call_args.kwargs
+        assert kwargs["encode_kwargs"]["audio_gcs_path"] == \
+            "gs://test-bucket/jobs/job-preview-async/previews/hash123_audio.flac"
 
 
 class TestPreviewVideoStatusEndpoint:

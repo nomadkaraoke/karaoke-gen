@@ -90,6 +90,54 @@ class CountdownProcessor:
 
         return modified_result, padded_audio_path, True, self.COUNTDOWN_PADDING_SECONDS
 
+    @classmethod
+    def padding_for_segments_data(cls, segments: Optional[List[dict]]) -> float:
+        """
+        Countdown padding (seconds) a render of these serialized segments gets.
+
+        Same rule as ``process``/``add_countdown_to_lyrics_if_needed`` but on the
+        plain ``corrected_segments`` dicts a review client sends, so an API can
+        tell the client how far the preview's timeline is shifted without
+        rebuilding a CorrectionResult. A countdown that is already present still
+        means a shifted timeline (and padded audio). 0.0 if no countdown applies.
+        """
+        if not segments:
+            return 0.0
+        if (segments[0] or {}).get("text") == cls.COUNTDOWN_TEXT:
+            return cls.COUNTDOWN_PADDING_SECONDS
+        for segment in segments:
+            words = (segment or {}).get("words") or []
+            if words:
+                try:
+                    first_start = float(words[0].get("start_time"))
+                except (TypeError, ValueError):
+                    return 0.0
+                return cls.COUNTDOWN_PADDING_SECONDS if first_start < cls.COUNTDOWN_THRESHOLD_SECONDS else 0.0
+        return 0.0
+
+    def add_countdown_to_lyrics_if_needed(
+        self, correction_result: CorrectionResult
+    ) -> Tuple[CorrectionResult, float]:
+        """
+        Lyrics-only half of ``process``: shift timings and add the countdown
+        segment if the song needs one, without touching any audio.
+
+        Used by the review preview, which must match the final render but pads
+        its audio separately (or has the encoder use pre-padded audio).
+        Already-countdown-processed results are returned unchanged, but still
+        report the padding: their timings are already shifted, so the audio
+        must be padded to match.
+
+        Returns:
+            (possibly modified CorrectionResult, padding seconds the caller must
+            prepend to the audio — 0.0 when the song has no countdown intro)
+        """
+        if self.has_countdown(correction_result):
+            return correction_result, self.COUNTDOWN_PADDING_SECONDS
+        if not self._needs_countdown(correction_result):
+            return correction_result, 0.0
+        return self._add_countdown_to_result(correction_result), self.COUNTDOWN_PADDING_SECONDS
+
     def _needs_countdown(self, correction_result: CorrectionResult) -> bool:
         """
         Check if the song needs a countdown intro.

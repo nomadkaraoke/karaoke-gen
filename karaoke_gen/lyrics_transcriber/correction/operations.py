@@ -28,6 +28,7 @@ from karaoke_gen.lyrics_transcriber.types import (
     LyricsData
 )
 from karaoke_gen.lyrics_transcriber.correction.corrector import LyricsCorrector
+from karaoke_gen.lyrics_transcriber.output.countdown_processor import CountdownProcessor
 from karaoke_gen.lyrics_transcriber.lyrics.user_input_provider import UserInputProvider
 from karaoke_gen.lyrics_transcriber.lyrics.base_lyrics_provider import LyricsProviderConfig, BaseLyricsProvider
 from karaoke_gen.lyrics_transcriber.output.generator import OutputGenerator
@@ -536,8 +537,27 @@ class CorrectionOperations:
             correction_result, updated_data
         )
         
-        # Generate a unique hash for this preview
+        # Apply the same countdown intro the final render adds (CountdownProcessor
+        # in the encoding worker): songs whose vocals start within 3s get the
+        # lyrics shifted +3s and a "3... 2... 1..." line. Without this the preview
+        # starts singing immediately while the final video has a cue, so reviewers
+        # think the countdown is missing. Audio padding is done here for the full
+        # render; ass_only callers get countdown_padding_seconds and must pad the
+        # audio they hand to the encoder themselves.
+        countdown_processor = CountdownProcessor(cache_dir=output_config.cache_dir, logger=logger)
+        temp_correction, countdown_padding_seconds = countdown_processor.add_countdown_to_lyrics_if_needed(
+            temp_correction
+        )
+        if countdown_padding_seconds:
+            if not ass_only:
+                audio_filepath = countdown_processor.create_padded_audio_only(audio_filepath)
+            logger.info(f"Preview: added {countdown_padding_seconds}s countdown intro")
+
+        # Generate a unique hash for this preview. Salted when a countdown is
+        # applied so previews cached before countdown support aren't reused.
         preview_data = json.dumps(updated_data, sort_keys=True).encode("utf-8")
+        if countdown_padding_seconds:
+            preview_data += b"|countdown-v1"
         preview_hash = hashlib.md5(preview_data).hexdigest()[:12]
         
         # Propagate duet flag from the outer config OR the request body.
@@ -589,6 +609,7 @@ class CorrectionOperations:
                 "status": "success",
                 "preview_hash": preview_hash,
                 "ass_path": preview_outputs.ass,
+                "countdown_padding_seconds": countdown_padding_seconds,
             }
 
         if not preview_outputs.video:
@@ -600,4 +621,5 @@ class CorrectionOperations:
             "status": "success",
             "preview_hash": preview_hash,
             "video_path": preview_outputs.video,
+            "countdown_padding_seconds": countdown_padding_seconds,
         } 
