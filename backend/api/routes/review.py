@@ -202,6 +202,7 @@ from karaoke_gen.lyrics_transcriber.types import CorrectionResult
 from karaoke_gen.lyrics_transcriber.core.config import OutputConfig
 from karaoke_gen.lyrics_transcriber.correction.operations import CorrectionOperations
 from karaoke_gen.lyrics_transcriber.output.timing_validation import LyricsTimingError
+from karaoke_gen.lyrics_transcriber.output.countdown_processor import CountdownProcessor
 
 # Import from the unified style loader
 from karaoke_gen.style_loader import load_styles_from_gcs
@@ -2058,6 +2059,14 @@ async def generate_preview_video(
     if untimed_line is not None:
         raise HTTPException(status_code=422, detail=t("en", "review.previewMissingTimings", line=untimed_line[:80]))
 
+    # Songs whose vocals start within 3s get a countdown intro in the preview,
+    # exactly as in the final render, which shifts the preview's timeline by this
+    # many seconds. The client needs it to keep the overlaid instrumental stem and
+    # waveform playhead aligned with the video.
+    countdown_padding_seconds = CountdownProcessor.padding_for_segments_data(
+        updated_data.get("corrected_segments")
+    )
+
     # Check if GCE preview encoding is enabled
     use_gce_preview = encoding_service.is_preview_enabled
 
@@ -2123,7 +2132,7 @@ async def generate_preview_video(
                                 _record_preview_video(job_id, preview_hash, preview_gcs_path)
                                 span.set_attribute("preview_cache_hit", True)
                                 logger.info(f"Job {job_id}: Preview cache hit: {preview_hash}")
-                                return {"status": "success", "preview_hash": preview_hash}
+                                return {"status": "success", "preview_hash": preview_hash, "countdown_padding_seconds": countdown_padding_seconds}
 
                             # Upload ASS to GCS
                             with create_span("upload-ass-to-gcs") as upload_ass_span:
@@ -2140,6 +2149,23 @@ async def generate_preview_video(
 
                             bucket_name = settings.gcs_bucket_name
                             style_assets = job.style_assets or {}
+
+                            # The ASS has the countdown intro (lyrics shifted +Ns);
+                            # the encoder needs audio padded by the same N seconds,
+                            # as the final render does. Pad here and hand the
+                            # encoder that file, so the worker needs no changes.
+                            audio_gcs_path = job.input_media_gcs_path
+                            if result.get("countdown_padding_seconds"):
+                                with create_span("pad-preview-audio-for-countdown"):
+                                    padded_audio_path = await asyncio.to_thread(
+                                        CountdownProcessor(
+                                            cache_dir=output_config.cache_dir, logger=logger
+                                        ).create_padded_audio_only,
+                                        audio_path,
+                                    )
+                                    audio_gcs_path = f"jobs/{job_id}/previews/{preview_hash}_audio.flac"
+                                    await asyncio.to_thread(storage.upload_file, padded_audio_path, audio_gcs_path)
+                                span.set_attribute("countdown_padding_seconds", countdown_padding_seconds)
 
                             # Only use background image if user explicitly requested it.
                             # Default is black background for faster preview generation.
@@ -2160,7 +2186,7 @@ async def generate_preview_video(
                             encode_kwargs = {
                                 "job_id": f"preview_{job_id}_{preview_hash}",
                                 "ass_gcs_path": f"gs://{bucket_name}/{ass_gcs_path}",
-                                "audio_gcs_path": f"gs://{bucket_name}/{job.input_media_gcs_path}",
+                                "audio_gcs_path": f"gs://{bucket_name}/{audio_gcs_path}",
                                 "output_gcs_path": f"gs://{bucket_name}/{preview_gcs_path}",
                                 "background_color": "black",
                                 "background_image_gcs_path": background_image_gcs_path,
@@ -2179,7 +2205,7 @@ async def generate_preview_video(
                             task.add_done_callback(_background_tasks.discard)
 
                             logger.info(f"Job {job_id}: Preview encode running in background: {preview_hash}")
-                            return {"status": "generating", "preview_hash": preview_hash}
+                            return {"status": "generating", "preview_hash": preview_hash, "countdown_padding_seconds": countdown_padding_seconds}
 
                         except LyricsTimingError:
                             raise
@@ -2199,7 +2225,7 @@ async def generate_preview_video(
                 span.set_attribute("preview_hash", preview_hash)
                 span.set_attribute("success", True)
 
-                return {"status": "success", "preview_hash": preview_hash}
+                return {"status": "success", "preview_hash": preview_hash, "countdown_padding_seconds": countdown_padding_seconds}
 
             except LyricsTimingError as timing_err:
                 # Untimed lyrics (e.g. custom lyrics not yet tap-synced) — this is a

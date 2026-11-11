@@ -30,6 +30,8 @@ interface ApiClient {
     status: string
     message?: string
     preview_hash?: string
+    /** Seconds of countdown intro prepended to the preview (0 when none). */
+    countdown_padding_seconds?: number
   }>
   getPreviewVideoStatus: (hash: string) => Promise<{
     status: string
@@ -121,6 +123,11 @@ function PreviewVideoSection(
   }, [])
 
   const internalVideoRef = useRef<HTMLVideoElement | null>(null)
+  // Seconds of countdown intro ("3... 2... 1...") the backend prepended to this
+  // preview, exactly as the final render does for songs whose vocals start within
+  // 3s. The video's timeline is song time + this offset; the instrumental stem and
+  // the waveform playhead run on song time, so every sync point converts.
+  const introOffsetRef = useRef(0)
   const instrumentalAudioRef = useRef<HTMLAudioElement | null>(null)
   const isInstrumentalRef = useRef(false)
   isInstrumentalRef.current = isInstrumental
@@ -174,7 +181,7 @@ function PreviewVideoSection(
       if (el && isInstrumentalRef.current) {
         const audio = instrumentalAudioRef.current
         if (audio && !audio.paused && audio.currentTime > 0) {
-          el.currentTime = audio.currentTime
+          el.currentTime = audio.currentTime + introOffsetRef.current
         }
       }
     },
@@ -241,6 +248,7 @@ function PreviewVideoSection(
 
         const response = await apiClient.generatePreviewVideo(dataToPreview, isDuet)
         if (cancelled) return
+        introOffsetRef.current = Math.max(0, Number(response.countdown_padding_seconds) || 0)
 
         if (response.status === 'error' || !response.preview_hash) {
           setPreviewState({
@@ -362,6 +370,23 @@ function PreviewVideoSection(
     if (!video) return
 
     const instrumentalActive = () => isInstrumentalRef.current && !!audio
+    // Song time for the current video position (negative during the countdown intro).
+    const songTime = () => video.currentTime - introOffsetRef.current
+    // Put the stem where the video is: parked at 0 during the intro (silence in the
+    // video too), playing from the matching song position after it.
+    const syncAudio = (forceSeek: boolean) => {
+      if (!audio) return
+      const target = songTime()
+      if (target < 0) {
+        if (!audio.paused) audio.pause()
+        if (audio.currentTime !== 0) audio.currentTime = 0
+        return
+      }
+      if (forceSeek || Math.abs(audio.currentTime - target) > AUDIO_SYNC_TOLERANCE_S) {
+        audio.currentTime = target
+      }
+      if (!video.paused && audio.paused) audio.play()?.catch(() => {})
+    }
 
     const applyMode = () => {
       const active = instrumentalActive()
@@ -370,10 +395,7 @@ function PreviewVideoSection(
       audio.muted = !active
       if (active) {
         audio.playbackRate = video.playbackRate
-        if (Math.abs(audio.currentTime - video.currentTime) > AUDIO_SYNC_TOLERANCE_S) {
-          audio.currentTime = video.currentTime
-        }
-        if (!video.paused) audio.play()?.catch(() => {})
+        syncAudio(false)
       } else {
         audio.pause()
       }
@@ -381,22 +403,21 @@ function PreviewVideoSection(
 
     const onPlay = () => {
       if (!audio || !instrumentalActive()) return
-      audio.currentTime = video.currentTime
-      audio.play()?.catch(() => {})
+      syncAudio(true)
     }
     const onPause = () => audio?.pause()
     const onSeeked = () => {
-      if (audio) audio.currentTime = video.currentTime
+      if (!audio) return
+      if (instrumentalActive()) syncAudio(true)
+      else audio.currentTime = Math.max(0, songTime())
     }
     const onRateChange = () => {
       if (audio) audio.playbackRate = video.playbackRate
     }
     const onTimeUpdateEvt = () => {
-      onTimeUpdate?.(video.currentTime)
+      onTimeUpdate?.(Math.max(0, songTime()))
       if (!audio || !instrumentalActive()) return
-      if (Math.abs(audio.currentTime - video.currentTime) > AUDIO_SYNC_TOLERANCE_S) {
-        audio.currentTime = video.currentTime
-      }
+      syncAudio(false)
     }
 
     applyMode()
@@ -453,7 +474,7 @@ function PreviewVideoSection(
         const video = internalVideoRef.current
         if (video) {
           if (seekTo != null) {
-            video.currentTime = seekTo
+            video.currentTime = seekTo + introOffsetRef.current
             video.play()?.catch(() => {})
           }
           return

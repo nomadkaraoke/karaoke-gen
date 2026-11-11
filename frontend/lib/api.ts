@@ -4459,6 +4459,8 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
       status: string
       message?: string
       preview_hash?: string
+      /** Seconds of countdown intro prepended to the preview (0 when none). */
+      countdown_padding_seconds?: number
     }> {
       const body: Record<string, unknown> = { ...data }
       if (isDuet !== undefined) {

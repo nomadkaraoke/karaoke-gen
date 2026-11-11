@@ -613,4 +613,91 @@ describe('PreviewVideoSection', () => {
     })
     expect(audio.src).toBe('http://test/backing.ogg')
   })
+
+  describe('countdown intro (vocals start within 3s)', () => {
+    // The backend prepends the same "3... 2... 1..." intro the final render adds and
+    // reports its length; the video timeline is song time + that offset, while the
+    // stem and waveform playhead stay on song time.
+    const renderWithCountdown = (onTimeUpdate?: jest.Mock) => {
+      const apiClient = makeApiClient({
+        generatePreviewVideo: jest.fn().mockResolvedValue({
+          status: 'success',
+          preview_hash: 'hash-countdown',
+          countdown_padding_seconds: 3,
+        }),
+      })
+      const ref = createRef<PreviewVideoHandle>()
+      render(
+        <PreviewVideoSection
+          ref={ref}
+          apiClient={apiClient}
+          isModalOpen={true}
+          updatedData={data}
+          instrumentalOptions={instrumentalOptions as any}
+          autoSelection="with_backing"
+          onTimeUpdate={onTimeUpdate}
+        />
+      )
+      return ref
+    }
+
+    it('seeks the video past the intro when auditioning at a song time', async () => {
+      const ref = renderWithCountdown()
+      await flush()
+      act(() => {
+        ref.current!.auditionInstrumental('clean', 5)
+      })
+      await flush()
+      const video = document.querySelector('video') as HTMLVideoElement
+      expect(video.currentTime).toBe(8)
+    })
+
+    it('reports song time (video time minus the intro) to the playhead', async () => {
+      const onTimeUpdate = jest.fn()
+      renderWithCountdown(onTimeUpdate)
+      await flush()
+      const video = document.querySelector('video') as HTMLVideoElement
+      video.currentTime = 10
+      fireEvent.timeUpdate(video)
+      expect(onTimeUpdate).toHaveBeenLastCalledWith(7)
+      // During the intro the playhead stays at the start of the song.
+      video.currentTime = 1
+      fireEvent.timeUpdate(video)
+      expect(onTimeUpdate).toHaveBeenLastCalledWith(0)
+    })
+
+    it('keeps the stem on song time when the video seeks, parked at 0 during the intro', async () => {
+      const ref = renderWithCountdown()
+      await flush()
+      act(() => {
+        ref.current!.auditionInstrumental('with_backing')
+      })
+      await flush()
+      const video = document.querySelector('video') as HTMLVideoElement
+      const audio = document.querySelector('audio') as HTMLAudioElement
+      video.currentTime = 11
+      fireEvent.seeked(video)
+      expect(audio.currentTime).toBe(8)
+      video.currentTime = 2
+      fireEvent.seeked(video)
+      expect(audio.currentTime).toBe(0)
+    })
+
+    it('uses no offset when the backend reports no countdown', async () => {
+      const onTimeUpdate = jest.fn()
+      render(
+        <PreviewVideoSection
+          apiClient={makeApiClient()}
+          isModalOpen={true}
+          updatedData={data}
+          onTimeUpdate={onTimeUpdate}
+        />
+      )
+      await flush()
+      const video = document.querySelector('video') as HTMLVideoElement
+      video.currentTime = 10
+      fireEvent.timeUpdate(video)
+      expect(onTimeUpdate).toHaveBeenLastCalledWith(10)
+    })
+  })
 })
