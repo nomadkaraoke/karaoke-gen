@@ -181,7 +181,9 @@ test.describe(`Tenant Portal Happy Path — ${TENANT_ID}`, () => {
     let reviewLink = null;
     const reviewDeadline = Date.now() + T.transcription;
     while (Date.now() < reviewDeadline) {
-      const link = page.getByRole('link', { name: /review lyrics/i }).first();
+      // Tenant portals are shared workspaces: other runs' jobs are listed too,
+      // so target THIS run's job by id rather than the first Review link.
+      const link = page.locator(`a[href*="#/${createdJobId}"][href$="/review"]`).first();
       // waitFor (not instant isVisible) so the client-side job-list fetch has
       // time to render each iteration; reload + retry if not ready yet.
       try {
