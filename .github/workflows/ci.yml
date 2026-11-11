@@ -180,7 +180,7 @@ jobs:
 
   frontend-e2e-smoke:
     name: "Frontend - E2E Smoke (~2 min)"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # Playwright 1.57 can't install chromium on ubuntu-latest (26.04)
     needs: changes
     # Quick smoke tests run on every PR with frontend changes
     if: github.ref != 'refs/heads/main' && needs.changes.outputs.frontend == 'true'
@@ -222,7 +222,7 @@ jobs:
 
   frontend-e2e-full:
     name: "Frontend - E2E Full"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # Playwright 1.57 can't install chromium on ubuntu-latest (26.04)
     needs: changes
     # Full E2E suite only runs when PR has 'e2e' label (on-demand)
     if: >-
@@ -262,7 +262,7 @@ jobs:
   # Happy Path Production Test - runs the comprehensive real-user test against prod
   frontend-e2e-happy-path:
     name: "Frontend - E2E Happy Path (Production)"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # Playwright 1.57 can't install chromium on ubuntu-latest (26.04)
     needs: changes
     # Only runs when PR has 'e2e-happy-path' label
     if: >-
@@ -794,7 +794,7 @@ jobs:
 
   local-stack-e2e:
     name: "Local Stack - Full-Journey E2E"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # Playwright 1.57 can't install chromium on ubuntu-latest (26.04)
     needs: changes
     # The real backend on the Firestore + GCS emulators with fake workers
     # (scripts/local-stack.sh), driven through the real web UI by

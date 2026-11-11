@@ -20,7 +20,7 @@ permissions:
 jobs:
   e2e-tenant:
     name: "Tenant E2E: ${{ matrix.tenant }}"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # Playwright 1.57 can't install chromium on ubuntu-latest (26.04)
     timeout-minutes: 60
     strategy:
       fail-fast: false
