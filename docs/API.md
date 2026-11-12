@@ -2650,6 +2650,8 @@ Updates editable job fields. Allowed fields: `artist`, `title`, `user_email`, `t
 
 **Note:** Setting `is_private=true` on a completed job with existing outputs triggers automatic output deletion.
 
+**Note:** YouTube uploads (first upload, admin re-render, redistribute) always use the current channel template `Settings.default_youtube_description`. A job's `youtube_description_template` is only a fallback for when no channel template is configured. The daily description backfill rewrites every channel video to the channel template anyway.
+
 **Note:** `user_email` is trimmed and lowercased before saving. If no account exists
 for that email, one is auto-created (so the recipient can log in and see the job,
 and the admin can impersonate them immediately). The response message notes when
