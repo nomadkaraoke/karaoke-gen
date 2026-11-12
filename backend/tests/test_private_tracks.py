@@ -206,8 +206,10 @@ class TestGetEffectiveDistributionForJob:
 
         assert dist.discord_webhook_url == "https://discord.com/webhook/123"
 
-    def test_non_private_job_uses_job_settings(self):
+    @patch('backend.services.job_defaults_service.get_settings')
+    def test_non_private_job_uses_job_settings(self, mock_settings):
         """Non-private job should use its own distribution settings."""
+        mock_settings.return_value = SimpleNamespace(default_youtube_description="")
         job = SimpleNamespace(
             is_private=False,
             dropbox_path="/Tracks-Organized",
@@ -227,8 +229,38 @@ class TestGetEffectiveDistributionForJob:
         assert dist.discord_webhook_url == "https://discord.com/hook"
         assert dist.youtube_description == "description"
 
-    def test_job_without_is_private_treated_as_non_private(self):
+    @patch('backend.services.job_defaults_service.get_settings')
+    def test_non_private_job_uses_current_channel_template_not_stale_copy(self, mock_settings):
+        """A job created before a template change (e.g. an admin re-render weeks
+        later) must upload with the CURRENT channel template, not its frozen copy."""
+        mock_settings.return_value = SimpleNamespace(default_youtube_description="NEW {title}")
+        job = SimpleNamespace(
+            is_private=False,
+            dropbox_path="/Tracks-Organized",
+            brand_prefix="NOMAD",
+            enable_youtube_upload=True,
+            gdrive_folder_id=None,
+            discord_webhook_url=None,
+            youtube_description_template="OLD {title}",
+        )
+
+        dist = get_effective_distribution_for_job(job)
+
+        assert dist.youtube_description == "NEW {title}"
+
+    @patch('backend.services.job_defaults_service.get_settings')
+    def test_non_private_job_falls_back_to_job_template_without_channel_template(self, mock_settings):
+        mock_settings.return_value = SimpleNamespace(default_youtube_description=None)
+        job = SimpleNamespace(is_private=False, youtube_description_template="JOB {title}")
+
+        dist = get_effective_distribution_for_job(job)
+
+        assert dist.youtube_description == "JOB {title}"
+
+    @patch('backend.services.job_defaults_service.get_settings')
+    def test_job_without_is_private_treated_as_non_private(self, mock_settings):
         """Job object without is_private attribute should be treated as non-private."""
+        mock_settings.return_value = SimpleNamespace(default_youtube_description="")
         job = SimpleNamespace(
             dropbox_path="/Tracks-Organized",
             brand_prefix="NOMAD",

@@ -1099,11 +1099,14 @@ async def generate_video_legacy(job_id: str) -> bool:
                     job_log.info(f"  using user-provided instrumental (selection was: {instrumental_selection})")
 
                 # Set up YouTube description file if template is provided
+                # Current channel template, not the copy frozen on the job at creation.
+                from backend.services.job_defaults_service import get_effective_distribution_for_job
+                youtube_desc_template = get_effective_distribution_for_job(job).youtube_description
                 youtube_desc_path = None
-                if youtube_credentials and getattr(job, 'youtube_description_template', None):
+                if youtube_credentials and youtube_desc_template:
                     youtube_desc_path = os.path.join(temp_dir, "youtube_description.txt")
                     with open(youtube_desc_path, 'w') as f:
-                        f.write(job.youtube_description_template)
+                        f.write(youtube_desc_template)
                     job_log.info("YouTube description template written to temp file")
 
                 # Duet-aware CDG: download the corrections JSON locally if present

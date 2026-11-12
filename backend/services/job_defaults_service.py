@@ -71,7 +71,9 @@ def get_effective_distribution_for_job(job) -> EffectiveDistributionSettings:
     - enable_youtube_upload → False (no YouTube for private)
     - gdrive_folder_id → None (no Google Drive for private)
 
-    For non-private jobs, returns the job's own distribution settings unchanged.
+    For non-private jobs, returns the job's own distribution settings, except
+    youtube_description, which is the CURRENT channel template
+    (settings.default_youtube_description), not the copy frozen on the job.
 
     Args:
         job: Job object (or any object with distribution fields)
@@ -100,14 +102,22 @@ def get_effective_distribution_for_job(job) -> EffectiveDistributionSettings:
             discord_webhook_url=getattr(job, 'discord_webhook_url', None),
             youtube_description=None,
         )
-    # Non-private: return job's own settings
+    # Non-private: return job's own settings, except the YouTube description.
+    # Every non-private upload lands on the shared Nomad channel, whose template
+    # is Settings.default_youtube_description (the description backfill worker
+    # rewrites every channel video to it). The job only holds a copy frozen at
+    # creation, so a job uploaded long after creation (admin re-render,
+    # redistribute) would publish a stale description that the backfill then
+    # has to fix the next day. Use the current template; fall back to the job's
+    # copy only if no channel template is configured.
+    current_template = get_settings().default_youtube_description
     return EffectiveDistributionSettings(
         dropbox_path=getattr(job, 'dropbox_path', None),
         brand_prefix=getattr(job, 'brand_prefix', None),
         enable_youtube_upload=getattr(job, 'enable_youtube_upload', False),
         gdrive_folder_id=getattr(job, 'gdrive_folder_id', None),
         discord_webhook_url=getattr(job, 'discord_webhook_url', None),
-        youtube_description=getattr(job, 'youtube_description_template', None),
+        youtube_description=current_template or getattr(job, 'youtube_description_template', None),
     )
 
 
