@@ -316,7 +316,7 @@ def test_progress_email_reports_recovered_count():
     with ctx:
         worker.run_backfill_sync(max_updates=2)
     html = ctx.email.send_email.call_args.kwargs["html_content"]
-    assert "uploads list" in html and "</b> 1</li>" in html
+    assert "Missing from YouTube's uploads list (checked directly):</b> 1</li>" in html
 
 
 def test_failed_seed_is_retried_next_run():
