@@ -41,6 +41,9 @@ class FakeDB:
         coll = MagicMock()
         coll.document.side_effect = lambda doc: self.refs.setdefault((name, doc), FakeDocRef())
         if name == worker.QUOTA_LEDGER_COLLECTION:
+            if self.ledger_docs == "fail":
+                coll.stream.side_effect = RuntimeError("firestore unavailable")
+                return coll
             docs = []
             for data in self.ledger_docs:
                 d = MagicMock()
@@ -314,3 +317,21 @@ def test_progress_email_reports_recovered_count():
         worker.run_backfill_sync(max_updates=2)
     html = ctx.email.send_email.call_args.kwargs["html_content"]
     assert "uploads list" in html and "</b> 1</li>" in html
+
+
+def test_failed_seed_is_retried_next_run():
+    """A ledger read failure must not persist a playlist-only known-IDs doc."""
+    ctx = _Ctx([_entry("a", will_change=False)], _videos(["a"]))
+    ctx.ledger_docs = "fail"
+    with ctx:
+        worker.run_backfill_sync()
+        assert ctx.enumerate.call_args.args[1] == []
+    assert ctx.known_ref.set_calls == []
+
+    ctx2 = _Ctx([_entry("a", will_change=False)], _videos(["a"]))
+    ctx2.known_ref = ctx.known_ref
+    ctx2.ledger_docs = [{"pending_uploads": [{"job_id": "desc-backfill:hidden"}]}]
+    with ctx2:
+        worker.run_backfill_sync()
+        assert ctx2.enumerate.call_args.args[1] == ["hidden"]
+    assert ctx2.known_ref.set_calls

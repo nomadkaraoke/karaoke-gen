@@ -72,15 +72,20 @@ def _seed_known_ids_from_ledger(db) -> List[str]:
     return list(dict.fromkeys(ids))
 
 
-def _load_known_ids(db) -> List[str]:
+def _load_known_ids(db) -> Optional[List[str]]:
+    """Known video IDs, seeding from the quota ledger on first use.
+
+    Returns None if seeding failed: the caller must then NOT save the known-IDs
+    doc, or the next run would find it and never retry the seed.
+    """
     snap = db.collection(STATE_COLLECTION).document(KNOWN_IDS_DOC).get()
     if snap.exists:
         return list((snap.to_dict() or {}).get("ids") or [])
     try:
         seeded = _seed_known_ids_from_ledger(db)
     except Exception as exc:  # noqa: BLE001
-        logger.warning(f"YOUTUBE_BACKFILL: could not seed known IDs from quota ledger: {exc}")
-        return []
+        logger.warning(f"YOUTUBE_BACKFILL: could not seed known IDs from quota ledger (will retry): {exc}")
+        return None
     logger.info(f"YOUTUBE_BACKFILL: seeded {len(seeded)} known video IDs from the quota ledger.")
     return seeded
 
@@ -115,7 +120,7 @@ def run_backfill_sync(max_updates: Optional[int] = None, dry_run: bool = False) 
     # Enumerate channel + compute pending (read-only). The uploads playlist
     # drops videos, so previously-seen IDs are looked up directly too.
     known_ids = _load_known_ids(db)
-    channel = bf.enumerate_channel(youtube, known_ids)
+    channel = bf.enumerate_channel(youtube, known_ids or [])
     entries, videos = channel.entries, channel.videos
     if channel.recovered_ids:
         logger.warning(
@@ -222,10 +227,12 @@ def run_backfill_sync(max_updates: Optional[int] = None, dry_run: bool = False) 
         logger.error(f"YOUTUBE_BACKFILL: failed to send report email: {exc}")
 
     state_ref.set(state)
-    # Remember every video videos.list returned (drops deleted ones).
-    db.collection(STATE_COLLECTION).document(KNOWN_IDS_DOC).set(
-        {"ids": sorted(videos.keys()), "updated_at": now}
-    )
+    # Remember every video videos.list returned (drops deleted ones). Skipped
+    # when the first-time seed failed, so the next run retries it.
+    if known_ids is not None:
+        db.collection(STATE_COLLECTION).document(KNOWN_IDS_DOC).set(
+            {"ids": sorted(videos.keys()), "updated_at": now}
+        )
     logger.info(f"YOUTUBE_BACKFILL: run complete: {summary}")
     return summary
 
