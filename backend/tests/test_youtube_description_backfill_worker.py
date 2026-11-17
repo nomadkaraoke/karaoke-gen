@@ -27,10 +27,27 @@ class FakeDocRef:
         self.set_calls.append(dict(d))
 
 
-def _fake_db(ref):
-    db = MagicMock()
-    db.collection.return_value.document.return_value = ref
-    return db
+class FakeDB:
+    """Routes collection/document paths: state doc, known-IDs doc, quota ledger."""
+
+    def __init__(self, state_ref, known_ref=None, ledger_docs=None):
+        self.refs = {
+            (worker.STATE_COLLECTION, worker.STATE_DOC): state_ref,
+            (worker.STATE_COLLECTION, worker.KNOWN_IDS_DOC): known_ref or FakeDocRef(),
+        }
+        self.ledger_docs = ledger_docs or []
+
+    def collection(self, name):
+        coll = MagicMock()
+        coll.document.side_effect = lambda doc: self.refs.setdefault((name, doc), FakeDocRef())
+        if name == worker.QUOTA_LEDGER_COLLECTION:
+            docs = []
+            for data in self.ledger_docs:
+                d = MagicMock()
+                d.to_dict.return_value = data
+                docs.append(d)
+            coll.stream.return_value = docs
+        return coll
 
 
 def _fake_settings(**overrides):
@@ -74,9 +91,19 @@ def _videos(vids):
 class _Ctx:
     """Bundle of patches; returns handles for assertions."""
 
-    def __init__(self, entries, videos, settings=None, quota_remaining=100000):
+    def __init__(self, entries, videos, settings=None, quota_remaining=100000,
+                 recovered_ids=(), gone_ids=(), listed_ids=None):
         self.entries = entries
         self.videos = videos
+        self.channel = worker.bf.ChannelEnumeration(
+            entries=entries,
+            videos=videos,
+            listed_ids=list(listed_ids if listed_ids is not None else videos),
+            recovered_ids=list(recovered_ids),
+            gone_ids=list(gone_ids),
+        )
+        self.known_ref = FakeDocRef()
+        self.ledger_docs = []
         self.settings = settings or _fake_settings()
         self.ref = FakeDocRef()
         self.youtube = MagicMock()
@@ -90,13 +117,15 @@ class _Ctx:
             patch.object(worker, "get_settings", return_value=self.settings),
             patch.object(worker.bf, "load_credentials_from_secret", return_value={"refresh_token": "x"}),
             patch.object(worker.bf, "build_youtube", return_value=self.youtube),
-            patch.object(worker.bf, "fetch_all_channel_entries", return_value=(self.entries, self.videos)),
-            patch.object(worker, "get_firestore_client", return_value=_fake_db(self.ref)),
+            patch.object(worker.bf, "enumerate_channel", return_value=self.channel),
+            patch.object(worker, "get_firestore_client",
+                         return_value=FakeDB(self.ref, self.known_ref, self.ledger_docs)),
             patch.object(worker, "get_youtube_quota_service", return_value=self.quota),
             patch.object(worker, "_email_service", return_value=self.email),
         ]
         for p in self._patches:
             p.start()
+        self.enumerate = worker.bf.enumerate_channel
         return self
 
     def __exit__(self, *a):
@@ -219,3 +248,69 @@ def test_quota_exceeded_stops_run():
     # 1 success, stopped on the 2nd (quota) before doing the 3rd
     assert result["updated"] == 1
     assert result["completed"] is False
+
+
+# ----------------------------------------------------------------------------
+# Known video IDs (the uploads playlist drops videos)
+# ----------------------------------------------------------------------------
+def test_first_run_seeds_known_ids_from_quota_ledger():
+    ctx = _Ctx([_entry("a", will_change=False)], _videos(["a"]))
+    ctx.ledger_docs = [
+        {"pending_uploads": [{"job_id": "desc-backfill:old1", "units": 50},
+                             {"job_id": "some-upload-job", "units": 1600}]},
+        {"pending_uploads": [{"job_id": "desc-backfill:old2"}, {"job_id": "desc-backfill:old1"}]},
+        {},
+    ]
+    with ctx:
+        worker.run_backfill_sync()
+        known_passed = ctx.enumerate.call_args.args[1]
+    assert known_passed == ["old1", "old2"]
+
+
+def test_existing_known_ids_are_passed_and_not_reseeded():
+    ctx = _Ctx([_entry("a", will_change=False)], _videos(["a"]))
+    ctx.known_ref = FakeDocRef({"ids": ["k1", "k2"]})
+    ctx.ledger_docs = [{"pending_uploads": [{"job_id": "desc-backfill:ledger1"}]}]
+    with ctx:
+        worker.run_backfill_sync()
+        known_passed = ctx.enumerate.call_args.args[1]
+    assert known_passed == ["k1", "k2"]
+
+
+def test_known_ids_saved_from_returned_videos():
+    vids = ["a", "b"]
+    ctx = _Ctx([_entry(v, will_change=False) for v in vids], _videos(vids), gone_ids=["deleted1"])
+    ctx.known_ref = FakeDocRef({"ids": ["a", "deleted1"]})
+    with ctx:
+        worker.run_backfill_sync()
+    assert ctx.known_ref.data["ids"] == ["a", "b"]
+
+
+def test_dry_run_does_not_save_known_ids():
+    ctx = _Ctx([_entry("a")], _videos(["a"]))
+    with ctx:
+        worker.run_backfill_sync(dry_run=True)
+    assert ctx.known_ref.set_calls == []
+
+
+def test_recovered_videos_are_updated_and_reported():
+    """A video missing from the uploads playlist but known still gets rewritten."""
+    vids = ["listed", "hidden"]
+    ctx = _Ctx([_entry(v) for v in vids], _videos(vids),
+               listed_ids=["listed"], recovered_ids=["hidden"])
+    with ctx:
+        result = worker.run_backfill_sync()
+    assert result["updated"] == 2
+    assert result["recovered_from_known"] == 1
+    assert result["listed_in_playlist"] == 1
+    updated_ids = [c.kwargs["body"]["id"] for c in ctx.youtube.videos.return_value.update.call_args_list]
+    assert "hidden" in updated_ids
+
+
+def test_progress_email_reports_recovered_count():
+    vids = ["a", "b", "c"]
+    ctx = _Ctx([_entry(v) for v in vids], _videos(vids), recovered_ids=["c"])
+    with ctx:
+        worker.run_backfill_sync(max_updates=2)
+    html = ctx.email.send_email.call_args.kwargs["html_content"]
+    assert "uploads list" in html and "</b> 1</li>" in html

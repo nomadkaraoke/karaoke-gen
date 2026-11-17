@@ -2560,3 +2560,10 @@ exactly one line-height apart, the wrapped half lands on the next row's lyrics.
   line that wrapped into an empty row.
 - `tests/unit/lyrics_transcriber/output/test_line_width_split.py` renders with real libass and
   asserts each lyric event draws exactly one row.
+
+### YouTube's uploads playlist is not a complete list of the channel (2026-11-14)
+`playlistItems.list` on the channel's `UU…` uploads playlist returned 1914 items with 11 duplicates, and left out
+public videos for weeks at a time (five 2023 This Is Me Smiling videos missed the whole Oct 22 description cycle,
+and the backfill reported "complete" without them). Anything that must touch every video should keep a persistent
+set of seen IDs and look them up directly with `videos.list` (1 unit per 50 IDs), as the description backfill does
+(`youtube_backfill.enumerate_channel` + Firestore `youtube_backfill/known_video_ids`).

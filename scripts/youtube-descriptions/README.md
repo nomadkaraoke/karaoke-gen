@@ -16,6 +16,15 @@ and `backend/services/youtube_description.py` for the template itself):
    fresh cycle) — this is the reusable, hands-off path. See the plan doc:
    `docs/archive/2026-09-03-youtube-descriptions-plan.md`.
 
+   **The uploads playlist is not a complete index of the channel.** Its pages
+   overlap (duplicate IDs) and videos silently drop out of it for weeks (2026-11:
+   five 2023 videos missed the whole Oct 22 template cycle, so "complete" was
+   reported early). The worker therefore keeps every video ID it has ever seen in
+   Firestore `youtube_backfill/known_video_ids` (seeded once from the quota
+   ledger's `desc-backfill:<id>` entries) and looks those up directly each run.
+   The progress email and the run summary (`recovered_from_known`) say how many
+   videos the playlist left out.
+
 2. **This CLI (manual / local one-offs).** For analysis, dry-runs, reviewing
    diffs, or updating specific videos by hand.
 

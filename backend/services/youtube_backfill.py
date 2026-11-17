@@ -13,8 +13,9 @@ Nothing here talks to the YouTube API — callers pass in already-fetched video
 snippet dicts (as returned by videos.list items) and act on the results.
 """
 import re
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from backend.services.youtube_description import build_youtube_tags, render_youtube_description
 
@@ -292,7 +293,16 @@ def get_uploads_playlist(youtube) -> str:
 
 
 def iter_all_video_ids(youtube, playlist_id: str) -> List[str]:
+    """List the uploads playlist, de-duplicated (first occurrence wins).
+
+    YouTube's uploads playlist is NOT a reliable index of the channel: pages
+    overlap (the same video on two pages) and some videos silently drop out of
+    it for weeks at a time (seen 2026-11: 1914 items, 11 duplicates, public
+    videos missing). Callers that must see every video should use
+    `enumerate_channel` with a persistent set of known IDs.
+    """
     ids: List[str] = []
+    seen: set = set()
     token = None
     while True:
         resp = (
@@ -301,7 +311,10 @@ def iter_all_video_ids(youtube, playlist_id: str) -> List[str]:
             .execute()
         )
         for it in resp.get("items", []):
-            ids.append(it["contentDetails"]["videoId"])
+            vid = it["contentDetails"]["videoId"]
+            if vid not in seen:
+                seen.add(vid)
+                ids.append(vid)
         token = resp.get("nextPageToken")
         if not token:
             break
@@ -333,3 +346,36 @@ def fetch_all_channel_entries(youtube) -> Tuple[List[Dict], Dict[str, Dict]]:
     ids = iter_all_video_ids(youtube, playlist_id)
     videos = fetch_snippets(youtube, ids)
     return build_entries(videos, ids), videos
+
+
+@dataclass
+class ChannelEnumeration:
+    entries: List[Dict]
+    videos: Dict[str, Dict]
+    listed_ids: List[str]
+    # Known videos the uploads playlist left out but videos.list still returns.
+    recovered_ids: List[str] = field(default_factory=list)
+    # Known videos videos.list no longer returns (deleted / removed).
+    gone_ids: List[str] = field(default_factory=list)
+
+
+def enumerate_channel(youtube, known_ids: Iterable[str] = ()) -> ChannelEnumeration:
+    """Enumerate the channel from the uploads playlist PLUS previously-known IDs.
+
+    The uploads playlist drops videos (see `iter_all_video_ids`), so every ID we
+    have ever seen is looked up directly with videos.list as well (~1 quota unit
+    per 50 IDs). Read-only.
+    """
+    playlist_id = get_uploads_playlist(youtube)
+    listed = iter_all_video_ids(youtube, playlist_id)
+    listed_set = set(listed)
+    extra = [vid for vid in dict.fromkeys(known_ids) if vid and vid not in listed_set]
+    all_ids = listed + extra
+    videos = fetch_snippets(youtube, all_ids)
+    return ChannelEnumeration(
+        entries=build_entries(videos, all_ids),
+        videos=videos,
+        listed_ids=listed,
+        recovered_ids=[vid for vid in extra if vid in videos],
+        gone_ids=[vid for vid in extra if vid not in videos],
+    )
