@@ -125,10 +125,12 @@ class _Ctx:
                          return_value=FakeDB(self.ref, self.known_ref, self.ledger_docs)),
             patch.object(worker, "get_youtube_quota_service", return_value=self.quota),
             patch.object(worker, "_email_service", return_value=self.email),
+            patch.object(worker.catalog, "sync_catalog", return_value={"new": 0}),
         ]
         for p in self._patches:
             p.start()
         self.enumerate = worker.bf.enumerate_channel
+        self.sync_catalog = worker.catalog.sync_catalog
         return self
 
     def __exit__(self, *a):
@@ -280,13 +282,13 @@ def test_existing_known_ids_are_passed_and_not_reseeded():
     assert known_passed == ["k1", "k2"]
 
 
-def test_known_ids_saved_from_returned_videos():
+def test_known_ids_keep_gone_videos_for_soft_delete():
     vids = ["a", "b"]
     ctx = _Ctx([_entry(v, will_change=False) for v in vids], _videos(vids), gone_ids=["deleted1"])
     ctx.known_ref = FakeDocRef({"ids": ["a", "deleted1"]})
     with ctx:
         worker.run_backfill_sync()
-    assert ctx.known_ref.data["ids"] == ["a", "b"]
+    assert ctx.known_ref.data["ids"] == ["a", "b", "deleted1"]
 
 
 def test_dry_run_does_not_save_known_ids():
@@ -335,3 +337,39 @@ def test_failed_seed_is_retried_next_run():
         worker.run_backfill_sync()
         assert ctx2.enumerate.call_args.args[1] == ["hidden"]
     assert ctx2.known_ref.set_calls
+
+
+# ----------------------------------------------------------------------------
+# Video catalogue
+# ----------------------------------------------------------------------------
+def test_catalogue_gets_post_update_descriptions_and_backfill_ids():
+    vids = ["a", "b"]
+    entries = [_entry("a"), _entry("b", will_change=False)]
+    ctx = _Ctx(entries, _videos(vids), gone_ids=["gone1"], listed_ids=["a"])
+    with ctx:
+        result = worker.run_backfill_sync()
+        kwargs = ctx.sync_catalog.call_args.kwargs
+        videos_arg = ctx.sync_catalog.call_args.args[1]
+    assert list(kwargs["backfill_pre_update"]) == ["a"]
+    assert kwargs["backfill_pre_update"]["a"]["snippet"]["description"] == "old description"
+    assert kwargs["gone_ids"] == ["gone1"]
+    assert kwargs["listed_ids"] == ["a"]
+    assert videos_arg["a"]["snippet"]["description"] != "old description"
+    assert videos_arg["b"]["snippet"]["description"] == "old description"
+    assert result["catalog"] == {"new": 0}
+
+
+def test_catalogue_failure_does_not_fail_run():
+    ctx = _Ctx([_entry("a")], _videos(["a"]))
+    with ctx:
+        ctx.sync_catalog.side_effect = RuntimeError("firestore down")
+        result = worker.run_backfill_sync()
+    assert result["status"] == "ok" and result["updated"] == 1
+    assert ctx.ref.data["last_run_updated"] == 1
+
+
+def test_dry_run_skips_catalogue():
+    ctx = _Ctx([_entry("a")], _videos(["a"]))
+    with ctx:
+        worker.run_backfill_sync(dry_run=True)
+        ctx.sync_catalog.assert_not_called()

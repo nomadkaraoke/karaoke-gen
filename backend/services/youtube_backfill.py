@@ -329,7 +329,9 @@ def _chunks(seq: List, n: int):
 def fetch_snippets(youtube, ids: List[str]) -> Dict[str, Dict]:
     out: Dict[str, Dict] = {}
     for batch in _chunks(ids, 50):
-        resp = youtube.videos().list(part="snippet,status", id=",".join(batch)).execute()
+        resp = youtube.videos().list(
+            part="snippet,status,contentDetails", id=",".join(batch)
+        ).execute()
         for it in resp.get("items", []):
             out[it["id"]] = it
     return out
