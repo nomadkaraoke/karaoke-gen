@@ -272,3 +272,13 @@ def test_large_sync_commits_in_multiple_batches_without_splitting_pairs():
         hist = {p.split("/")[1] for p in b if "/history/" in p}
         assert docs == hist
     assert len(db.collection(catalog.COLLECTION).docs()) == 450
+
+
+def test_new_video_rewritten_in_same_run_keeps_original_in_history():
+    db = MemDB()
+    _sync(db, {"a": _video("a", desc="new template")}, T0, pre={"a": _video("a", desc="upload description")})
+    events = sorted((h["event"], h["source"]) for h in _history(db, "a"))
+    assert events == [("changed", "backfill"), ("first_seen", "observed")]
+    changed = [h for h in _history(db, "a") if h["event"] == "changed"][0]
+    assert changed["changes"]["description"] == {"old": "upload description", "new": "new template"}
+    assert _doc(db, "a")["description"] == "new template"

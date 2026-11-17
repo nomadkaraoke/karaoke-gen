@@ -176,7 +176,13 @@ def sync_catalog(
         prev = existing.get(vid)
         if prev is None:
             doc.update(first_seen_at=now, last_changed_at=now)
-            writer.group([(coll.document(vid), doc, False), _history(vid, "first_seen", {}, "observed")])
+            ops = [(coll.document(vid), doc, False), _history(vid, "first_seen", {}, "observed")]
+            if vid in pre_update:
+                # Rewritten in the same run it was first seen: keep the original.
+                ours = _diff(metadata_from_video(pre_update[vid]), meta)
+                if ours:
+                    ops.append(_history(vid, "changed", ours, "backfill"))
+            writer.group(ops)
             stats["new"] += 1
             continue
 
