@@ -25,6 +25,18 @@ and `backend/services/youtube_description.py` for the template itself):
    The progress email and the run summary (`recovered_from_known`) say how many
    videos the playlist left out.
 
+   **Video catalogue.** Each run also mirrors every video's metadata to Firestore
+   `youtube_videos/{video_id}` (title, description, tags, publish date, privacy,
+   duration, parsed artist/song/brand code, `first_seen_at`, `last_seen_at`,
+   `last_changed_at`, `in_uploads_playlist`). Every change is logged in
+   `youtube_videos/{id}/history` as `{at, event, changes: {field: {old, new}}, source}`
+   (`event` = first_seen / changed / deleted / restored; `source` = `backfill` for
+   this job's own rewrites, else `observed`). Videos YouTube stops returning are
+   **soft-deleted** (`deleted=True`, `deleted_at`), never removed, and keep being
+   checked. No extra YouTube quota; writes only on change. Code:
+   `backend/services/youtube_video_catalog.py`. Example: what changed on a video?
+   `db.collection("youtube_videos").document(vid).collection("history").order_by("at").stream()`.
+
 2. **This CLI (manual / local one-offs).** For analysis, dry-runs, reviewing
    diffs, or updating specific videos by hand.
 

@@ -19,6 +19,9 @@ Design (built to be re-usable, not a one-shot):
   video ID ever seen is kept in Firestore (`youtube_backfill/known_video_ids`)
   and looked up directly each run. First run seeds it from the quota ledger's
   `desc-backfill:<id>` entries (every video this job has ever rewritten).
+- Every video's metadata is mirrored to the `youtube_videos` catalogue (with a
+  per-video change history; vanished videos are soft-deleted, never removed).
+  See `backend/services/youtube_video_catalog.py`.
 - A Postmark email is sent after each run (progress) and once when the channel is
   fully drained (completion).
 
@@ -31,6 +34,7 @@ from typing import Dict, List, Optional
 
 from backend.config import get_settings
 from backend.services import youtube_backfill as bf
+from backend.services import youtube_video_catalog as catalog
 from backend.services.firestore_service import get_firestore_client
 from backend.services.youtube_quota_service import get_youtube_quota_service
 
@@ -148,6 +152,7 @@ def run_backfill_sync(max_updates: Optional[int] = None, dry_run: bool = False) 
         budget = min(budget, max_updates)
 
     updated = 0
+    updated_ids = []
     errors: Dict[str, str] = {}
     if not dry_run and pending_before > 0 and budget > 0:
         for entry in pending[:budget]:
@@ -169,6 +174,11 @@ def run_backfill_sync(max_updates: Optional[int] = None, dry_run: bool = False) 
                 logger.error(f"YOUTUBE_BACKFILL: update failed for {vid}: {msg}")
                 continue
             updated += 1
+            updated_ids.append(vid)
+            # Reflect our own rewrite so the catalogue stores the new
+            # description and attributes the change to the backfill.
+            if vid in videos:
+                videos[vid] = {**videos[vid], "snippet": {**current_snippet, **body}}
             try:
                 quota.record_upload(f"desc-backfill:{vid}", units=bf.UPDATE_COST)
             except Exception:  # noqa: BLE001
@@ -227,12 +237,28 @@ def run_backfill_sync(max_updates: Optional[int] = None, dry_run: bool = False) 
         logger.error(f"YOUTUBE_BACKFILL: failed to send report email: {exc}")
 
     state_ref.set(state)
-    # Remember every video videos.list returned (drops deleted ones). Skipped
-    # when the first-time seed failed, so the next run retries it.
+    # Remember every video ever seen. Gone ones are kept (soft-deleted in the
+    # catalogue) and re-checked, so a reappearance is noticed. Skipped when the
+    # first-time seed failed, so the next run retries it.
     if known_ids is not None:
         db.collection(STATE_COLLECTION).document(KNOWN_IDS_DOC).set(
-            {"ids": sorted(videos.keys()), "updated_at": now}
+            {"ids": sorted(set(videos) | set(known_ids)), "updated_at": now}
         )
+    # Best-effort mirror of every video's metadata; never fails the run.
+    try:
+        catalog_stats = catalog.sync_catalog(
+            db,
+            videos,
+            entries,
+            listed_ids=channel.listed_ids,
+            gone_ids=channel.gone_ids,
+            now=now,
+            backfill_updated_ids=updated_ids,
+        )
+        summary["catalog"] = catalog_stats
+        logger.info(f"YOUTUBE_BACKFILL: catalogue synced: {catalog_stats}")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"YOUTUBE_BACKFILL: catalogue sync failed: {exc}")
     logger.info(f"YOUTUBE_BACKFILL: run complete: {summary}")
     return summary
 
