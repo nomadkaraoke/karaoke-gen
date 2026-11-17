@@ -197,3 +197,65 @@ class TestListLoaders:
         assert "jAAhbfmh8Bc" in skip           # a lyrics-with-vocals video
         assert "5zSFKuCEIhs" in inc            # Los Campesinos! force-include
         assert inc["5zSFKuCEIhs"]["artist"] == "Los Campesinos!"
+
+
+# ----------------------------------------------------------------------------
+# Channel enumeration (uploads playlist is unreliable)
+# ----------------------------------------------------------------------------
+def _fake_youtube(pages, existing):
+    """pages: list of lists of video IDs; existing: IDs videos.list returns."""
+    from unittest.mock import MagicMock
+
+    yt = MagicMock()
+    yt.channels.return_value.list.return_value.execute.return_value = {
+        "items": [{"contentDetails": {"relatedPlaylists": {"uploads": "UU1"}}}]
+    }
+
+    def _pl_list(**kw):
+        idx = int(kw.get("pageToken") or 0)
+        resp = {"items": [{"contentDetails": {"videoId": v}} for v in pages[idx]]}
+        if idx + 1 < len(pages):
+            resp["nextPageToken"] = str(idx + 1)
+        m = MagicMock()
+        m.execute.return_value = resp
+        return m
+
+    yt.playlistItems.return_value.list.side_effect = _pl_list
+    calls = []
+
+    def _videos_list(**kw):
+        ids = kw["id"].split(",")
+        calls.append(ids)
+        m = MagicMock()
+        m.execute.return_value = {"items": [
+            {"id": v, "snippet": {"title": f"Artist - {v} (Karaoke)", "description": "x"}}
+            for v in ids if v in existing
+        ]}
+        return m
+
+    yt.videos.return_value.list.side_effect = _videos_list
+    return yt, calls
+
+
+class TestEnumeration:
+    def test_iter_all_video_ids_dedupes_overlapping_pages(self):
+        yt, _ = _fake_youtube([["a", "b"], ["b", "c"], ["a"]], existing=set())
+        assert bf.iter_all_video_ids(yt, "UU1") == ["a", "b", "c"]
+
+    def test_enumerate_channel_checks_known_ids_missing_from_playlist(self):
+        yt, calls = _fake_youtube([["a", "b"]], existing={"a", "b", "hidden"})
+        ch = bf.enumerate_channel(yt, known_ids=["a", "hidden", "deleted", "hidden"])
+        assert ch.listed_ids == ["a", "b"]
+        assert ch.recovered_ids == ["hidden"]
+        assert ch.gone_ids == ["deleted"]
+        assert set(ch.videos) == {"a", "b", "hidden"}
+        assert [e["video_id"] for e in ch.entries] == ["a", "b", "hidden"]
+        # each ID looked up once
+        looked_up = [v for batch in calls for v in batch]
+        assert sorted(looked_up) == ["a", "b", "deleted", "hidden"]
+
+    def test_enumerate_channel_without_known_ids_matches_playlist(self):
+        yt, _ = _fake_youtube([["a"], ["b"]], existing={"a", "b"})
+        ch = bf.enumerate_channel(yt)
+        assert ch.recovered_ids == [] and ch.gone_ids == []
+        assert [e["video_id"] for e in ch.entries] == ["a", "b"]

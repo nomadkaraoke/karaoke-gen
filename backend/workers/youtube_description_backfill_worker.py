@@ -15,6 +15,10 @@ Design (built to be re-usable, not a one-shot):
 - Work is capped per run by (a) a hard `youtube_backfill_daily_max_updates` and
   (b) whatever daily quota is left after reserving `youtube_backfill_quota_reserve`
   units for the live upload pipeline (via YouTubeQuotaService).
+- The uploads playlist silently drops videos (sometimes for weeks), so every
+  video ID ever seen is kept in Firestore (`youtube_backfill/known_video_ids`)
+  and looked up directly each run. First run seeds it from the quota ledger's
+  `desc-backfill:<id>` entries (every video this job has ever rewritten).
 - A Postmark email is sent after each run (progress) and once when the channel is
   fully drained (completion).
 
@@ -23,7 +27,7 @@ Triggered by Cloud Scheduler → POST /api/internal/youtube-backfill/run.
 import hashlib
 import logging
 from datetime import datetime, timezone
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from backend.config import get_settings
 from backend.services import youtube_backfill as bf
@@ -34,6 +38,9 @@ logger = logging.getLogger(__name__)
 
 STATE_COLLECTION = "youtube_backfill"
 STATE_DOC = "state"
+KNOWN_IDS_DOC = "known_video_ids"
+QUOTA_LEDGER_COLLECTION = "youtube_quota_pending"
+_LEDGER_PREFIX = "desc-backfill:"
 _MAX_STORED_ERRORS = 20
 
 
@@ -52,6 +59,35 @@ def _fresh_cycle_state(prev: Dict, fingerprint: str, now: datetime) -> Dict:
         "completed_notified": False,
         "recent_errors": {},
     }
+
+
+def _seed_known_ids_from_ledger(db) -> List[str]:
+    """Every video this job has ever updated, from the daily quota ledgers."""
+    ids: List[str] = []
+    for doc in db.collection(QUOTA_LEDGER_COLLECTION).stream():
+        for item in (doc.to_dict() or {}).get("pending_uploads") or []:
+            job_id = (item or {}).get("job_id") or ""
+            if job_id.startswith(_LEDGER_PREFIX):
+                ids.append(job_id[len(_LEDGER_PREFIX):])
+    return list(dict.fromkeys(ids))
+
+
+def _load_known_ids(db) -> Optional[List[str]]:
+    """Known video IDs, seeding from the quota ledger on first use.
+
+    Returns None if seeding failed: the caller must then NOT save the known-IDs
+    doc, or the next run would find it and never retry the seed.
+    """
+    snap = db.collection(STATE_COLLECTION).document(KNOWN_IDS_DOC).get()
+    if snap.exists:
+        return list((snap.to_dict() or {}).get("ids") or [])
+    try:
+        seeded = _seed_known_ids_from_ledger(db)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"YOUTUBE_BACKFILL: could not seed known IDs from quota ledger (will retry): {exc}")
+        return None
+    logger.info(f"YOUTUBE_BACKFILL: seeded {len(seeded)} known video IDs from the quota ledger.")
+    return seeded
 
 
 def run_backfill_sync(max_updates: Optional[int] = None, dry_run: bool = False) -> Dict:
@@ -81,8 +117,16 @@ def run_backfill_sync(max_updates: Optional[int] = None, dry_run: bool = False) 
         logger.info("YOUTUBE_BACKFILL: template changed (or first run) — starting new cycle.")
         state = _fresh_cycle_state(state, fingerprint, now)
 
-    # Enumerate channel + compute pending (read-only).
-    entries, videos = bf.fetch_all_channel_entries(youtube)
+    # Enumerate channel + compute pending (read-only). The uploads playlist
+    # drops videos, so previously-seen IDs are looked up directly too.
+    known_ids = _load_known_ids(db)
+    channel = bf.enumerate_channel(youtube, known_ids or [])
+    entries, videos = channel.entries, channel.videos
+    if channel.recovered_ids:
+        logger.warning(
+            f"YOUTUBE_BACKFILL: uploads playlist omitted {len(channel.recovered_ids)} known videos "
+            f"(checked them directly): {channel.recovered_ids[:20]}"
+        )
     total_targets = sum(1 for e in entries if e["target"])
     pending = [e for e in entries if e["will_change"]]
     pending_before = len(pending)
@@ -156,6 +200,9 @@ def run_backfill_sync(max_updates: Optional[int] = None, dry_run: bool = False) 
         "remaining_units": remaining_units,
         "completed": completed,
         "errors": len(errors),
+        "listed_in_playlist": len(channel.listed_ids),
+        "recovered_from_known": len(channel.recovered_ids),
+        "gone": len(channel.gone_ids),
     }
 
     if dry_run:
@@ -180,6 +227,12 @@ def run_backfill_sync(max_updates: Optional[int] = None, dry_run: bool = False) 
         logger.error(f"YOUTUBE_BACKFILL: failed to send report email: {exc}")
 
     state_ref.set(state)
+    # Remember every video videos.list returned (drops deleted ones). Skipped
+    # when the first-time seed failed, so the next run retries it.
+    if known_ids is not None:
+        db.collection(STATE_COLLECTION).document(KNOWN_IDS_DOC).set(
+            {"ids": sorted(videos.keys()), "updated_at": now}
+        )
     logger.info(f"YOUTUBE_BACKFILL: run complete: {summary}")
     return summary
 
@@ -208,6 +261,7 @@ def _send_progress_email(settings, state, summary, stats, errors):
       <li><b>Done so far:</b> {done} / {summary['total_targets']}</li>
       <li><b>Run budget:</b> {summary['budget']} updates (quota remaining ~{summary['remaining_units']} units)</li>
       <li><b>Updated in this cycle so far:</b> {state.get('total_updated_in_cycle')}</li>
+      <li><b>Missing from YouTube's uploads list (checked directly):</b> {summary.get('recovered_from_known', 0)}</li>
     </ul>
     {err_html}
     <p>Another batch runs tomorrow until the channel is fully drained.</p>
