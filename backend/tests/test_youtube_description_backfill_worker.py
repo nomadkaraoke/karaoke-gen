@@ -350,7 +350,8 @@ def test_catalogue_gets_post_update_descriptions_and_backfill_ids():
         result = worker.run_backfill_sync()
         kwargs = ctx.sync_catalog.call_args.kwargs
         videos_arg = ctx.sync_catalog.call_args.args[1]
-    assert kwargs["backfill_updated_ids"] == ["a"]
+    assert list(kwargs["backfill_pre_update"]) == ["a"]
+    assert kwargs["backfill_pre_update"]["a"]["snippet"]["description"] == "old description"
     assert kwargs["gone_ids"] == ["gone1"]
     assert kwargs["listed_ids"] == ["a"]
     assert videos_arg["a"]["snippet"]["description"] != "old description"

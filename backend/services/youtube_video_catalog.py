@@ -24,7 +24,7 @@ handful of writes.
 """
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, Iterable, List, Optional, Set
+from typing import Dict, Iterable, List, Mapping, Optional, Set
 
 logger = logging.getLogger(__name__)
 
@@ -98,26 +98,29 @@ def _chunks(seq: List, n: int):
 
 
 class _Writer:
-    """Firestore batch writer that commits every _BATCH_LIMIT operations."""
+    """Batches writes; a group (doc + its history) never spans two commits."""
 
     def __init__(self, db):
         self.db = db
         self.batch = db.batch()
-        self.ops = 0
+        self.pending = 0
 
-    def set(self, ref, data, merge=False):
-        self.batch.set(ref, data, merge=merge)
-        self._tick()
+    def group(self, ops):
+        """ops: list of (ref, data, merge). Committed together, atomically."""
+        if self.pending and self.pending + len(ops) > _BATCH_LIMIT:
+            self._commit()
+        for ref, data, merge in ops:
+            self.batch.set(ref, data, merge=merge)
+        self.pending += len(ops)
 
-    def _tick(self):
-        self.ops += 1
-        if self.ops % _BATCH_LIMIT == 0:
-            self.batch.commit()
-            self.batch = self.db.batch()
+    def _commit(self):
+        self.batch.commit()
+        self.batch = self.db.batch()
+        self.pending = 0
 
     def flush(self):
-        if self.ops % _BATCH_LIMIT:
-            self.batch.commit()
+        if self.pending:
+            self._commit()
 
 
 def sync_catalog(
@@ -127,17 +130,19 @@ def sync_catalog(
     listed_ids: Iterable[str],
     gone_ids: Iterable[str],
     now: datetime,
-    backfill_updated_ids: Iterable[str] = (),
+    backfill_pre_update: Optional[Mapping[str, Dict]] = None,
 ) -> Dict[str, int]:
     """Upsert every returned video and soft-delete the gone ones.
 
-    `videos` must reflect the state AFTER this run's own description updates,
-    so those changes are attributed to `source="backfill"`.
+    `videos` must reflect the state AFTER this run's own description updates.
+    `backfill_pre_update` maps each video this run rewrote to its videos.list
+    item from BEFORE the rewrite: changes up to that point are logged as
+    `observed`, and the rewrite itself as `backfill`.
     """
     coll = db.collection(COLLECTION)
     entries_by_id = {e["video_id"]: e for e in entries}
     listed: Set[str] = set(listed_ids)
-    ours: Set[str] = set(backfill_updated_ids)
+    pre_update: Mapping[str, Dict] = backfill_pre_update or {}
     gone = [vid for vid in dict.fromkeys(gone_ids) if vid not in videos]
 
     all_ids = list(videos.keys()) + gone
@@ -151,9 +156,10 @@ def sync_catalog(
     writer = _Writer(db)
 
     def _history(vid, event, changes, source):
-        writer.set(
+        return (
             coll.document(vid).collection(HISTORY_SUBCOLLECTION).document(),
             {"at": now, "event": event, "changes": changes, "source": source},
+            False,
         )
 
     for vid, video in videos.items():
@@ -170,12 +176,17 @@ def sync_catalog(
         prev = existing.get(vid)
         if prev is None:
             doc.update(first_seen_at=now, last_changed_at=now)
-            writer.set(coll.document(vid), doc)
-            _history(vid, "first_seen", {}, "observed")
+            writer.group([(coll.document(vid), doc, False), _history(vid, "first_seen", {}, "observed")])
             stats["new"] += 1
             continue
 
-        changes = _diff(prev, meta)
+        if vid in pre_update:
+            before = metadata_from_video(pre_update[vid])
+            observed = _diff(prev, before)
+            ours = _diff(before, meta)
+        else:
+            observed, ours = _diff(prev, meta), {}
+        changes = {**observed, **ours}
         restored = bool(prev.get("deleted"))
         bookkeeping_changed = any(
             prev.get(k) != doc[k]
@@ -186,36 +197,41 @@ def sync_catalog(
 
         if changes or restored:
             doc["last_changed_at"] = now
+        ops = []
         if changes or restored or bookkeeping_changed or stale_seen:
-            writer.set(coll.document(vid), doc, merge=True)
+            ops.append((coll.document(vid), doc, True))
             stats["touched"] += 1
         if restored:
-            _history(vid, "restored", changes, "observed")
+            ops.append(_history(vid, "restored", observed, "observed"))
             stats["restored"] += 1
-        elif changes:
-            _history(vid, "changed", changes, "backfill" if vid in ours else "observed")
+        elif observed:
+            ops.append(_history(vid, "changed", observed, "observed"))
+        if ours:
+            ops.append(_history(vid, "changed", ours, "backfill"))
+        if observed or ours:
             stats["changed"] += 1
+        if ops:
+            writer.group(ops)
 
     for vid in gone:
         prev = existing.get(vid)
         if prev is None:
             # Known ID we never catalogued (e.g. deleted before the catalogue
             # existed): keep a stub so the record survives.
-            writer.set(
-                coll.document(vid),
-                {"video_id": vid, "deleted": True, "deleted_at": now,
-                 "first_seen_at": now, "last_changed_at": now},
-            )
-            _history(vid, "deleted", {}, "observed")
+            writer.group([
+                (coll.document(vid),
+                 {"video_id": vid, "deleted": True, "deleted_at": now,
+                  "first_seen_at": now, "last_changed_at": now}, False),
+                _history(vid, "deleted", {}, "observed"),
+            ])
             stats["deleted"] += 1
         elif not prev.get("deleted"):
-            writer.set(
-                coll.document(vid),
-                {"deleted": True, "deleted_at": now, "last_changed_at": now,
-                 "in_uploads_playlist": False},
-                merge=True,
-            )
-            _history(vid, "deleted", {}, "observed")
+            writer.group([
+                (coll.document(vid),
+                 {"deleted": True, "deleted_at": now, "last_changed_at": now,
+                  "in_uploads_playlist": False}, True),
+                _history(vid, "deleted", {}, "observed"),
+            ])
             stats["deleted"] += 1
 
     writer.flush()

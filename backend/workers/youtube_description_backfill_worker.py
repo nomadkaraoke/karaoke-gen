@@ -152,7 +152,7 @@ def run_backfill_sync(max_updates: Optional[int] = None, dry_run: bool = False) 
         budget = min(budget, max_updates)
 
     updated = 0
-    updated_ids = []
+    pre_update: Dict[str, Dict] = {}
     errors: Dict[str, str] = {}
     if not dry_run and pending_before > 0 and budget > 0:
         for entry in pending[:budget]:
@@ -174,10 +174,10 @@ def run_backfill_sync(max_updates: Optional[int] = None, dry_run: bool = False) 
                 logger.error(f"YOUTUBE_BACKFILL: update failed for {vid}: {msg}")
                 continue
             updated += 1
-            updated_ids.append(vid)
             # Reflect our own rewrite so the catalogue stores the new
             # description and attributes the change to the backfill.
             if vid in videos:
+                pre_update[vid] = videos[vid]
                 videos[vid] = {**videos[vid], "snippet": {**current_snippet, **body}}
             try:
                 quota.record_upload(f"desc-backfill:{vid}", units=bf.UPDATE_COST)
@@ -253,7 +253,7 @@ def run_backfill_sync(max_updates: Optional[int] = None, dry_run: bool = False) 
             listed_ids=channel.listed_ids,
             gone_ids=channel.gone_ids,
             now=now,
-            backfill_updated_ids=updated_ids,
+            backfill_pre_update=pre_update,
         )
         summary["catalog"] = catalog_stats
         logger.info(f"YOUTUBE_BACKFILL: catalogue synced: {catalog_stats}")

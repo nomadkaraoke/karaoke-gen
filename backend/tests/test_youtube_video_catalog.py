@@ -108,11 +108,11 @@ def _entry(vid):
             "kind": "nomad_recent", "target": True}
 
 
-def _sync(db, videos, now, listed=None, gone=(), ours=()):
+def _sync(db, videos, now, listed=None, gone=(), pre=None):
     return catalog.sync_catalog(
         db, videos, [_entry(v) for v in videos],
         listed_ids=list(videos) if listed is None else listed,
-        gone_ids=list(gone), now=now, backfill_updated_ids=list(ours),
+        gone_ids=list(gone), now=now, backfill_pre_update=pre,
     )
 
 
@@ -184,10 +184,24 @@ def test_title_and_privacy_change_recorded_as_observed():
 def test_backfill_rewrite_attributed_to_backfill():
     db = MemDB()
     _sync(db, {"a": _video("a", desc="old template")}, T0)
-    _sync(db, {"a": _video("a", desc="new template")}, T0 + timedelta(days=1), ours=["a"])
+    _sync(db, {"a": _video("a", desc="new template")}, T0 + timedelta(days=1),
+          pre={"a": _video("a", desc="old template")})
     hist = [h for h in _history(db, "a") if h["event"] == "changed"]
+    assert len(hist) == 1
     assert hist[0]["source"] == "backfill"
     assert hist[0]["changes"]["description"]["old"] == "old template"
+
+
+def test_studio_edit_and_backfill_rewrite_in_one_run_are_logged_separately():
+    db = MemDB()
+    _sync(db, {"a": _video("a", title="Old (Karaoke)", desc="old template")}, T0)
+    # Someone renamed it in Studio; then this run rewrote the description.
+    before = _video("a", title="New (Karaoke)", desc="old template")
+    after = _video("a", title="New (Karaoke)", desc="new template")
+    _sync(db, {"a": after}, T0 + timedelta(days=1), pre={"a": before})
+    hist = {h["source"]: h for h in _history(db, "a") if h["event"] == "changed"}
+    assert set(hist["observed"]["changes"]) == {"title"}
+    assert set(hist["backfill"]["changes"]) == {"description"}
 
 
 def test_gone_video_is_soft_deleted_once_and_keeps_metadata():
@@ -235,11 +249,26 @@ def test_playlist_membership_change_updates_doc_without_history():
     assert len(_history(db, "a")) == 1
 
 
-def test_large_sync_commits_in_multiple_batches():
+def test_large_sync_commits_in_multiple_batches_without_splitting_pairs():
     db = MemDB()
-    videos = {f"v{i}": _video(f"v{i}") for i in range(450)}
-    stats = _sync(db, videos, T0)
+    batches = []
+    orig_commit = MemBatch.commit
+
+    def _spy(self):
+        batches.append([p for p, _, _ in self.ops])
+        orig_commit(self)
+
+    MemBatch.commit = _spy
+    try:
+        videos = {f"v{i}": _video(f"v{i}") for i in range(450)}
+        stats = _sync(db, videos, T0)
+    finally:
+        MemBatch.commit = orig_commit
     assert stats["new"] == 450
-    # 450 docs + 450 history entries = 900 ops -> 3 commits at 400/batch
-    assert db.commits == 3
+    assert len(batches) == 3 and all(len(b) <= catalog._BATCH_LIMIT for b in batches)
+    # every video's doc and its first_seen history land in the same batch
+    for b in batches:
+        docs = {p.split("/")[1] for p in b if p.count("/") == 1}
+        hist = {p.split("/")[1] for p in b if "/history/" in p}
+        assert docs == hist
     assert len(db.collection(catalog.COLLECTION).docs()) == 450
