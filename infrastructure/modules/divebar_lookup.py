@@ -20,6 +20,7 @@ from pulumi_gcp import (
     bigquery,
 )
 
+from modules.source_archive import clean_source_archive
 from config import PROJECT_ID, REGION, get_project_number
 
 BIGQUERY_DATASET = "karaoke_decide"
@@ -81,7 +82,7 @@ def create_divebar_lookup_resources(all_secrets: dict) -> dict:
         "divebar-lookup-source",
         bucket=source_bucket.name,
         name="divebar-lookup-source.zip",
-        source=pulumi.FileArchive(str(source_dir)),
+        source=clean_source_archive(source_dir),
     )
     resources["source_archive"] = source_archive
 

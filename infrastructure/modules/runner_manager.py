@@ -29,6 +29,7 @@ from pathlib import Path
 
 import pulumi
 import pulumi_gcp as gcp
+from modules.source_archive import clean_source_archive
 from config import (
     PROJECT_ID,
     REGION,
@@ -133,7 +134,7 @@ def create_function_source_archive(bucket: gcp.storage.Bucket) -> gcp.storage.Bu
         "runner-manager-source",
         bucket=bucket.name,
         name="runner-manager-source.zip",
-        source=pulumi.FileArchive(str(source_dir)),
+        source=clean_source_archive(source_dir),
     )
 
 
