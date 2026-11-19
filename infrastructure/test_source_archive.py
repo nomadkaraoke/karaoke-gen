@@ -1,11 +1,11 @@
-"""Tests for modules/source_archive.py (run: pytest infrastructure/modules/test_source_archive.py)."""
+"""Tests for modules/source_archive.py (run: pytest infrastructure/test_source_archive.py)."""
 
 import sys
 from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent / "modules"))
 
 from source_archive import clean_source_archive, source_files  # noqa: E402
 
