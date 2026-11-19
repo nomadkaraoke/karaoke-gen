@@ -13,7 +13,7 @@ Policy + design: `docs/ARCHITECTURE.md` § Storage Retention. Code:
 Manual trigger (admin token):
 
 ```bash
-TOK=$(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke | cut -d, -f1)
+TOK=$(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke --account=claude-readonly@nomadkaraoke.iam.gserviceaccount.com | cut -d, -f1)
 curl -X POST https://api.nomadkaraoke.com/api/internal/storage-retention/run -H "X-Admin-Token: $TOK"
 curl -X POST https://api.nomadkaraoke.com/api/internal/storage-retention/orphans -H "X-Admin-Token: $TOK"   # dry-run
 ```

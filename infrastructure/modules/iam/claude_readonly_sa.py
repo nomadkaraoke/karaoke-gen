@@ -59,6 +59,19 @@ def grant_claude_readonly_permissions(
             ),
         )
 
+    # The one secret sessions may read: the backend admin API token. Sessions
+    # need it to retry/inspect jobs via the API (CLAUDE.md "API Authentication"),
+    # and the gcloud CLI's user login lapses, so without this every session hit
+    # a wall. Andrew asked for it on 2026-11-19. Deliberately scoped to this one
+    # secret; all other secret values stay unreadable to claude-readonly.
+    bindings["admin_tokens_accessor"] = gcp.secretmanager.SecretIamMember(
+        "claude-readonly-admin-tokens-access",
+        project=PROJECT_ID,
+        secret_id="admin-tokens",
+        role="roles/secretmanager.secretAccessor",
+        member=service_account.email.apply(lambda email: f"serviceAccount:{email}"),
+    )
+
     return bindings
 
 

@@ -33,7 +33,7 @@ angle-brackets reach the shell):
 # should return 200 fast, not hang
 JOB_ID="d93747cd"   # any in-review job
 curl -s -m 30 -o /dev/null -w "%{http_code} %{time_total}s\n" \
-  -H "Authorization: Bearer $(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke | cut -d, -f1)" \
+  -H "Authorization: Bearer $(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke --account=claude-readonly@nomadkaraoke.iam.gserviceaccount.com | cut -d, -f1)" \
   "https://api.nomadkaraoke.com/api/review/${JOB_ID}/correction-data"
 # and check signing is logging again
 gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="karaoke-backend" AND jsonPayload.message:"Generated signed"' \
@@ -222,16 +222,16 @@ the PR title before squash-merging.
 ```bash
 # 1. Check for stuck downloads
 curl -s "https://api.nomadkaraoke.com/api/health/job-consistency" \
-  -H "X-Admin-Token: $(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke)" \
+  -H "X-Admin-Token: $(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke --account=claude-readonly@nomadkaraoke.iam.gserviceaccount.com)" \
   | python3 -m json.tool | grep -A3 "downloading_audio_stuck"
 
 # 2. Trigger recovery manually (if scheduler hasn't run yet)
 curl -X POST "https://api.nomadkaraoke.com/api/internal/recover-stuck-jobs" \
-  -H "X-Admin-Token: $(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke)"
+  -H "X-Admin-Token: $(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke --account=claude-readonly@nomadkaraoke.iam.gserviceaccount.com)"
 
 # 3. Retry the failed job via admin dashboard or API
 curl -X POST "https://api.nomadkaraoke.com/api/jobs/YOUR_JOB_ID/retry" \
-  -H "X-Admin-Token: $(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke)"
+  -H "X-Admin-Token: $(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke --account=claude-readonly@nomadkaraoke.iam.gserviceaccount.com)"
 ```
 
 ---
@@ -302,7 +302,7 @@ bumping it.
 ```bash
 # 1. Confirm the job is flagged
 curl -s "https://api.nomadkaraoke.com/api/health/job-consistency" \
-  -H "X-Admin-Token: $(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke)" \
+  -H "X-Admin-Token: $(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke --account=claude-readonly@nomadkaraoke.iam.gserviceaccount.com)" \
   | python3 -m json.tool | grep -A3 "encoding_stuck"
 
 # 2. Check what the GCE worker knows about the job
@@ -313,7 +313,7 @@ curl -s "$WORKER_URL/status/YOUR_JOB_ID" -H "X-API-Key: $WORKER_KEY" | python3 -
 # 3. Re-trigger the video worker — it will pick up the cached GCE result if encoding
 #    already finished, or rejoin the poll if it's still running
 curl -X POST "https://api.nomadkaraoke.com/api/internal/workers/video" \
-  -H "X-Admin-Token: $(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke)" \
+  -H "X-Admin-Token: $(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke --account=claude-readonly@nomadkaraoke.iam.gserviceaccount.com)" \
   -H "Content-Type: application/json" \
   -d '{"job_id": "YOUR_JOB_ID"}'
 ```
@@ -406,7 +406,7 @@ gcloud compute ssh <worker-name> --zone=<zone> --project=nomadkaraoke --tunnel-t
 **Re-render a job that already failed past review:** a failed job is terminal, and admin `/jobs/{id}/reset` has no `review_complete` target. Reset to `awaiting_review`, then re-submit the review (reuses the existing GCS corrections):
 
 ```bash
-ADMIN_TOKEN=$(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke | cut -d',' -f1)
+ADMIN_TOKEN=$(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke --account=claude-readonly@nomadkaraoke.iam.gserviceaccount.com | cut -d',' -f1)
 curl -s -X POST "https://api.nomadkaraoke.com/api/admin/jobs/<id>/reset" \
   -H "X-Admin-Token: $ADMIN_TOKEN" -H "Content-Type: application/json" \
   -d '{"target_state": "awaiting_review"}'
@@ -644,7 +644,7 @@ print((d.get('state_data') or {}).get('render_pending_capacity'))
 
 **Force an immediate retry** (Cloud Scheduler runs every 10 min, but you can poke it manually):
 ```bash
-ADMIN_TOKEN=$(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke | cut -d',' -f1)
+ADMIN_TOKEN=$(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke --account=claude-readonly@nomadkaraoke.iam.gserviceaccount.com | cut -d',' -f1)
 curl -X POST https://api.nomadkaraoke.com/api/internal/retry-pending-render-jobs \
   -H "X-Admin-Token: $ADMIN_TOKEN"
 ```
@@ -716,7 +716,7 @@ Look for these markers:
 **Recovery (only if a job somehow still gets stuck — e.g. SIGKILL hit before park completed):** manually transition to `review_complete` and re-trigger the render. The instrumental selection in `state_data` is preserved so no user re-work is needed:
 
 ```bash
-ADMIN_TOKEN=$(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke | cut -d',' -f1)
+ADMIN_TOKEN=$(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke --account=claude-readonly@nomadkaraoke.iam.gserviceaccount.com | cut -d',' -f1)
 JID=YOUR_JOB_ID
 python3 << EOF
 import os; os.environ['GOOGLE_CLOUD_PROJECT']='nomadkaraoke'

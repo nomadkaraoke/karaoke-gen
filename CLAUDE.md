@@ -68,8 +68,9 @@ This single command:
 When asked to "test it yourself in prod" or verify a fix in production:
 
 ```bash
-# Get admin token
-export KARAOKE_ADMIN_TOKEN=$(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke | cut -d',' -f1)
+# Get admin token. claude-readonly@ may read this one secret (Pulumi:
+# infrastructure/modules/iam/claude_readonly_sa.py), so no gcloud login is needed.
+export KARAOKE_ADMIN_TOKEN=$(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke --account=claude-readonly@nomadkaraoke.iam.gserviceaccount.com | cut -d',' -f1)
 
 # Option 1: Use the debug template directly
 cd frontend && node e2e/helpers/debug-prod-template.mjs
@@ -128,7 +129,7 @@ Use the `X-Admin-Token` header with the token from Secret Manager:
 ```bash
 # Trigger video worker
 curl -X POST "https://api.nomadkaraoke.com/api/internal/workers/video" \
-  -H "X-Admin-Token: $(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke)" \
+  -H "X-Admin-Token: $(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke --account=claude-readonly@nomadkaraoke.iam.gserviceaccount.com)" \
   -H "Content-Type: application/json" \
   -d '{"job_id": "YOUR_JOB_ID"}'
 
