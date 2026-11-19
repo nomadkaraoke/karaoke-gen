@@ -44,6 +44,11 @@ def grant_claude_readonly_permissions(
         "bigquery_job_user": "roles/bigquery.jobUser",
         "storage_viewer": "roles/storage.objectViewer",
         "secretmanager_viewer": "roles/secretmanager.viewer",
+        # Secret VALUES too (Andrew, 2026-11-19): sessions need the admin API
+        # token, OAuth creds etc. for remediation, and the gcloud CLI user login
+        # keeps lapsing. This makes the SA's key secret-equivalent: anyone with
+        # it can read every secret in the project.
+        "secretmanager_accessor": "roles/secretmanager.secretAccessor",
         "run_viewer": "roles/run.viewer",
         "compute_viewer": "roles/compute.viewer",
         "logging_viewer": "roles/logging.viewer",

@@ -744,7 +744,7 @@ cd frontend && node test-my-issue.local.mjs
 
 ```bash
 # Get admin token from Secret Manager
-export KARAOKE_ADMIN_TOKEN=$(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke | cut -d',' -f1)
+export KARAOKE_ADMIN_TOKEN=$(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke --account=claude-readonly@nomadkaraoke.iam.gserviceaccount.com | cut -d',' -f1)
 
 # Run the template directly
 cd frontend && node e2e/helpers/debug-prod-template.mjs
