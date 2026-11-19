@@ -13,7 +13,6 @@ Creates:
 import base64
 from pathlib import Path
 
-import pulumi
 import pulumi_gcp as gcp
 from pulumi_gcp import (
     cloudfunctionsv2,
@@ -23,6 +22,7 @@ from pulumi_gcp import (
     bigquery,
 )
 
+from modules.source_archive import clean_source_archive
 from config import PROJECT_ID, REGION, get_project_number
 
 # Divebar shared folder ID (public Google Drive folder)
@@ -124,7 +124,7 @@ def create_divebar_mirror_resources(all_secrets: dict) -> dict:
         "divebar-mirror-source",
         bucket=source_bucket.name,
         name="divebar-mirror-source.zip",
-        source=pulumi.FileArchive(str(source_dir)),
+        source=clean_source_archive(source_dir),
     )
     resources["source_archive"] = source_archive
 

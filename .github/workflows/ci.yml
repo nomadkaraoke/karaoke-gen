@@ -103,6 +103,8 @@ jobs:
       - run: pip install -r infrastructure/functions/encoding_worker_idle/requirements.txt
       # Separate invocation: both functions have a top-level `main` module.
       - run: pytest infrastructure/functions/encoding_worker_idle -q -p no:cacheprovider -o addopts=""
+      - run: pip install "pulumi>=3.0.0,<4.0.0"
+      - run: pytest infrastructure/test_source_archive.py -q -p no:cacheprovider -o addopts=""
 
   frontend-lint:
     name: "Frontend - Lint (Rules of Hooks)"

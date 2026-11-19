@@ -7,6 +7,15 @@ Key insights for future AI agents working on this codebase.
 ---
 
 
+## `pulumi.FileArchive` packed `__pycache__`, so every checkout saw phantom drift (Nov 2026, v0.297.4)
+
+The runner-manager function was applied from a worktree that had just run its tests, so the deployed zip held
+`__pycache__/*.pyc`. `FileArchive` hashes every file in the directory, so a clean checkout of main then previewed
+"replace source + update function" with byte-identical code, which looked like unmerged work. Cloud Function
+sources are now built with `modules/source_archive.clean_source_archive()`, which packs source files only. Use it
+for any new function. To tell real drift from this kind, compare the live zip
+(`gcloud functions describe ... buildConfig.source` → `gcloud storage cp` → `unzip -l`) against the checkout.
+
 ## An AI "correction" nothing can confirm is a guess: ground it in real data (Nov 2026, v0.294.0)
 
 At a live kjbox night a singer typed "Cole Phillips – Roll of Dice", a 2025 release missing from the
