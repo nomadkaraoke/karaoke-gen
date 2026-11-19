@@ -68,7 +68,7 @@ This single command:
 When asked to "test it yourself in prod" or verify a fix in production:
 
 ```bash
-# Get admin token. claude-readonly@ may read this one secret (Pulumi:
+# Get admin token. claude-readonly@ can read all secrets (Pulumi:
 # infrastructure/modules/iam/claude_readonly_sa.py), so no gcloud login is needed.
 export KARAOKE_ADMIN_TOKEN=$(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke --account=claude-readonly@nomadkaraoke.iam.gserviceaccount.com | cut -d',' -f1)
 
