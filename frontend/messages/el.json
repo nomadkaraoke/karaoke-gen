@@ -648,7 +648,8 @@
     "preparingAudio": "Προετοιμασία του ήχου σου",
     "processing": "Επεξεργασία",
     "waitingForUpload": "Αναμονή μεταφόρτωσης",
-    "restoringStems": "Επαναφορά stems ήχου"
+    "restoringStems": "Επαναφορά stems ήχου",
+    "preparingReview": "Προετοιμασία προεπισκόπησης"
   },
   "jobCard": {
     "actionNeeded": "Απαιτείται ενέργεια",

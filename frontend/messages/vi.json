@@ -648,7 +648,8 @@
     "preparingAudio": "Đang chuẩn bị âm thanh của bạn",
     "processing": "Đang xử lý",
     "waitingForUpload": "Đang chờ tải lên",
-    "restoringStems": "Đang khôi phục các stem âm thanh"
+    "restoringStems": "Đang khôi phục các stem âm thanh",
+    "preparingReview": "Đang chuẩn bị bản xem lại"
   },
   "jobCard": {
     "actionNeeded": "Cần hành động",

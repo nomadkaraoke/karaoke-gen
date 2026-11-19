@@ -648,7 +648,8 @@
     "preparingAudio": "กำลังเตรียมไฟล์เสียงของคุณ",
     "processing": "กำลังประมวลผล",
     "waitingForUpload": "รอการอัปโหลด",
-    "restoringStems": "กำลังกู้คืนแทร็กเสียงแยกชิ้น (audio stems)"
+    "restoringStems": "กำลังกู้คืนแทร็กเสียงแยกชิ้น (audio stems)",
+    "preparingReview": "กำลังเตรียมการตรวจสอบ"
   },
   "jobCard": {
     "actionNeeded": "ต้องการการดำเนินการ",

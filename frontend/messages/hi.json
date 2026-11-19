@@ -648,7 +648,8 @@
     "preparingAudio": "तुम्हारा ऑडियो तैयार किया जा रहा है",
     "processing": "प्रोसेस हो रहा है",
     "waitingForUpload": "अपलोड का इंतज़ार है",
-    "restoringStems": "ऑडियो स्टेम्स रिस्टोर किए जा रहे हैं"
+    "restoringStems": "ऑडियो स्टेम्स रिस्टोर किए जा रहे हैं",
+    "preparingReview": "समीक्षा तैयार की जा रही है"
   },
   "jobCard": {
     "actionNeeded": "एक्शन की ज़रूरत है",

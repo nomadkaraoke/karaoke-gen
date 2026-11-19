@@ -2,8 +2,8 @@
 
 ``ensure_and_pre_apply`` applies the cached AI suggestions BEFORE the review-ready
 notification and writes ``corrections_updated.json`` with a ``pre_applied`` marker.
-It is best-effort: any miss leaves corrections_updated absent so the review UI falls
-back to its client-side on-load auto-apply.
+It is best-effort: if no suggestions can be had it leaves corrections_updated absent
+and the review opens uncorrected (the UI never applies suggestions by itself).
 """
 from __future__ import annotations
 
@@ -206,3 +206,20 @@ async def test_pre_apply_raced_concurrent_write_does_not_clobber():
     assert result["reason"] == "raced_concurrent_write"
     # The concurrent writer's content is untouched.
     assert storage._files[UPD]["metadata"] == {}
+
+
+@pytest.mark.asyncio
+async def test_pre_apply_applies_despite_duplicate_words():
+    """Job ae995697: a "ne ne ne ne ne" duplicate aborted the pre-apply and left the
+    browser to apply the same suggestions. Human review now gets them server-side,
+    with the duplicate recorded as a warning."""
+    corrections = _corrections()
+    corrections["corrected_segments"][0]["words"][2]["text"] = "ne"
+    dup = dict(_replace_suggestion(), id="dup", word_ids=["w1"], original_text="amateur",
+               new_text="ne")
+    storage = _FakeStorage({CORR: corrections, CACHE: {"suggestions": [dup]}})
+    result, _, _gen = await _run(storage)
+    assert result["outcome"] == "pre_applied"
+    aa = storage.uploads[UPD]["metadata"]["auto_approval"]
+    assert aa["applied_suggestion_ids"] == ["dup"]
+    assert aa["warnings"] == ["duplicate_words:ne"]

@@ -3,19 +3,22 @@
 Andrew's directive (2026-08-29): *"apply the ai-generated lyrics corrections and any
 post-ai heuristic fixes before the user ever sees the notification/button saying the
 lyrics review is ready ... it should all be done server-side and loaded as a single
-load event when the lyrics review page launches."*
+load event when the lyrics review page launches."* Reaffirmed 2026-11-19: *"i want
+the ai corrections to always be processed before i open the review page"*, with no
+second, in-browser code path.
 
-Called from ``screens_worker`` for review-bound jobs (i.e. when the executor did NOT
-auto-complete the whole job), just before the AWAITING_REVIEW transition. It applies
-the same cached suggestions the review UI would auto-apply on load, using the same
-machinery the executor uses (``apply.build_applied_segments``), and writes
-``corrections_updated.json`` with a ``pre_applied`` marker so the ``/correction-data``
-endpoint serves the already-corrected state in a single load — eliminating the
-in-browser auto-apply race.
+Called from ``review_gate.enter_human_review`` just before the AWAITING_REVIEW
+transition, and from ``/correction-data`` for jobs that reached review before this
+existed. It applies the cached suggestions with the same machinery the executor uses
+(``apply.build_applied_segments``, non-strict: what "Accept All" would produce) and
+writes ``corrections_updated.json`` with a ``pre_applied`` marker, so the review page
+loads the corrected lyrics in one load. The review UI never applies suggestions by
+itself any more.
 
-BEST-EFFORT: never raises, bounded. On any miss (proactive disabled, cache absent,
-LLM outage, sanity-check abort) it simply does nothing and the review UI falls back to
-its existing client-side on-load auto-apply. Auto-approval must never strand a job.
+BEST-EFFORT: never raises, bounded. If no suggestions can be had (proactive
+disabled, LLM outage) it does nothing, and the review opens with the uncorrected
+lyrics; the reviewer can still run the AI panel by hand. Auto-approval must never
+strand a job.
 """
 from __future__ import annotations
 
@@ -38,8 +41,7 @@ async def ensure_and_pre_apply(job_id: str, *, generate_on_miss: bool = True) ->
     ``generate_on_miss`` (default True, the screens_worker path): when the proactive
     cache is absent, generate it synchronously (bounded) before applying. The
     ``/correction-data`` load path passes False — it only applies an EXISTING cache
-    so a review page never blocks on a multi-model LLM call; a cache-miss there
-    falls through to the UI's own client-side apply.
+    so a review page never blocks on a multi-model LLM call.
     """
     try:
         from backend.config import get_settings
@@ -81,15 +83,20 @@ async def ensure_and_pre_apply(job_id: str, *, generate_on_miss: bool = True) ->
             ai_suggestions = await asyncio.to_thread(_load_ai_suggestions, storage, job_id)
 
         if ai_suggestions is None:
-            # Unknown suggestion set (proactive disabled or generation failed) —
-            # do NOT mark pre_applied; let the UI run its client-side apply.
+            # Unknown suggestion set (proactive disabled or generation failed):
+            # do NOT mark pre_applied; review opens with the uncorrected lyrics.
             return {"outcome": "skipped", "reason": "no_suggestions_cache"}
 
-        # 2) Apply with the executor's sanity gates.
-        result = await asyncio.to_thread(build_applied_segments, corrections, ai_suggestions)
+        # 2) Apply exactly what "Accept All" would. Non-strict: a human reviews
+        #    the result, so stale/duplicate signals are warnings, not aborts.
+        result = await asyncio.to_thread(
+            lambda: build_applied_segments(corrections, ai_suggestions, strict=False)
+        )
         if result.get("aborted"):
-            logger.info(f"[job:{job_id}] pre-apply aborted ({result['aborted']}) — UI will apply client-side")
+            logger.warning(f"[job:{job_id}] pre-apply could not apply ({result['aborted']})")
             return {"outcome": "skipped", "reason": result["aborted"]}
+        if result.get("warnings"):
+            logger.info(f"[job:{job_id}] pre-apply warnings: {result['warnings']}")
 
         # 3) Persist corrections_updated.json with the pre_applied marker + the
         #    suggestions themselves (so the review panel renders applied state).
@@ -105,6 +112,7 @@ async def ensure_and_pre_apply(job_id: str, *, generate_on_miss: bool = True) ->
             # UI can still revert an individual pre-applied correction even
             # though it never applied it client-side itself.
             "undo_info": result["undo_info"],
+            "warnings": result.get("warnings") or [],
             "applied_at": datetime.now(timezone.utc).isoformat(),
         }
         updated["metadata"] = metadata

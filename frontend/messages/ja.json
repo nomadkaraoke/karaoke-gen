@@ -648,7 +648,8 @@
     "preparingAudio": "音源を準備中",
     "processing": "処理中",
     "waitingForUpload": "アップロード待機中",
-    "restoringStems": "オーディオステムを復元中"
+    "restoringStems": "オーディオステムを復元中",
+    "preparingReview": "確認画面を準備中"
   },
   "jobCard": {
     "actionNeeded": "アクションが必要です",

@@ -208,6 +208,16 @@ the zone to "full (strict)".** Full rationale + cutover runbook:
    • Analyze backing vocals track (for instrumental selection)
    • Transcode audio to OGG Opus for review UI (~3 MB vs 35 MB FLAC)
                        ▼
+3b. REVIEW GATE (backend/services/auto_approval/review_gate.py)
+   • If stems aren't ready yet, hold in GENERATING_SCREENS
+     (state_data.auto_review_waiting_for_stems; job card: "Preparing review")
+   • Audio worker releases the hold → auto-approval re-score with stems
+   • Auto-ship if confident, else prepare the review BEFORE AWAITING_REVIEW:
+     AI corrections generated + applied server-side (pre_apply.py; the browser
+     never applies them), stem OGGs + backing waveform + vocal peaks cached
+     (review_assets.py)
+   • Backstop: recover_stuck_jobs releases a hold after 20 min
+                       ▼
 4. COMBINED HUMAN REVIEW (AWAITING_REVIEW)
    • React UI for lyrics correction
    • Preview video generation (optionally via GCE for speed)

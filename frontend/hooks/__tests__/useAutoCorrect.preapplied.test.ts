@@ -51,8 +51,6 @@ describe('useAutoCorrect pre-applied mode (C2)', () => {
       useAutoCorrect({
         ...baseArgs,
         data: makeData(),
-        autoRunOnLoad: false,
-        autoApplyOnLoad: false,
         preApplied: { suggestions, appliedIds: ['a'], rejectedIds: ['b'] },
       }),
     )
@@ -72,8 +70,6 @@ describe('useAutoCorrect pre-applied mode (C2)', () => {
       useAutoCorrect({
         ...baseArgs,
         data: makeData(),
-        autoRunOnLoad: false,
-        autoApplyOnLoad: false,
         preApplied: null,
       }),
     )
@@ -99,8 +95,6 @@ describe('useAutoCorrect pre-applied mode (C2)', () => {
             { id: 's0', text: 'not much here', words: [{ id: 'w0', text: 'not', start_time: 0, end_time: 0.3 }], start_time: 0, end_time: 1 },
           ],
         },
-        autoRunOnLoad: false,
-        autoApplyOnLoad: false,
         preApplied: {
           suggestions,
           appliedIds: ['a'],
@@ -151,8 +145,6 @@ describe('useAutoCorrect pre-applied mode (C2)', () => {
             { id: 's0', text: 'not much here', words: [{ id: 'w0', text: 'not', start_time: 0, end_time: 0.3 }], start_time: 0, end_time: 1 },
           ],
         },
-        autoRunOnLoad: false,
-        autoApplyOnLoad: false,
         preApplied: {
           suggestions,
           appliedIds: ['a'],
@@ -193,8 +185,6 @@ describe('useAutoCorrect pre-applied mode (C2)', () => {
       useAutoCorrect({
         ...baseArgs,
         data: makeData(),
-        autoRunOnLoad: false,
-        autoApplyOnLoad: false,
         preApplied: { suggestions, appliedIds: ['a'], rejectedIds: [] },
       }),
     )

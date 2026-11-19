@@ -648,7 +648,8 @@
     "preparingAudio": "Förbereder ditt ljud",
     "processing": "Bearbetar",
     "waitingForUpload": "Väntar på uppladdning",
-    "restoringStems": "Återställer ljudspår"
+    "restoringStems": "Återställer ljudspår",
+    "preparingReview": "Förbereder granskning"
   },
   "jobCard": {
     "actionNeeded": "Åtgärd krävs",

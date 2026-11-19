@@ -648,7 +648,8 @@
     "preparingAudio": "מכינים את האודיו שלך",
     "processing": "בעיבוד",
     "waitingForUpload": "ממתין להעלאה",
-    "restoringStems": "משחזר ערוצי שמע (stems)"
+    "restoringStems": "משחזר ערוצי שמע (stems)",
+    "preparingReview": "מכין לבדיקה"
   },
   "jobCard": {
     "actionNeeded": "נדרשת פעולה",

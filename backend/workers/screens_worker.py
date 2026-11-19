@@ -777,75 +777,14 @@ async def _transcode_review_audio(
     job_manager: JobManager,
     job_log: logging.Logger,
 ) -> None:
+    """Transcode review audio and pre-compute the review waveforms (non-fatal).
+
+    Runs on lyrics completion, usually before the stems exist; the review gate
+    runs the same preparation again once they land (backend/services/review_assets.py).
     """
-    Transcode all review audio files to OGG Opus for fast browser playback.
+    from backend.services.review_assets import prepare_review_assets
 
-    This eagerly transcodes input audio + stems so the review UI serves
-    ~3 MB OGG files instead of 35+ MB FLACs. Non-fatal: if transcoding
-    fails, the review UI falls back to original FLAC signed URLs.
-    """
-    from backend.services.audio_transcoding_service import AudioTranscodingService
-
-    try:
-        job = await asyncio.to_thread(job_manager.get_job, job_id)
-        if not job:
-            job_log.warning(f"Could not get job {job_id} for review audio transcoding")
-            return
-
-        # GCS download of up to 4 ~35MB FLACs + an ffmpeg transcode each (7-15s
-        # apiece) — this ran ON the event loop and froze the whole instance for
-        # 10-45s per job (2026-10-03 analysis). Run it in a worker thread.
-        transcoding = AudioTranscodingService()
-        transcoded = await asyncio.to_thread(transcoding.prepare_review_audio_for_job, job)
-
-        job_log.info(f"Review audio transcoding complete: {len(transcoded)} files")
-
-        # Pre-compute the review-page waveform JSON while we're here, so the
-        # /waveform-data endpoint is a pure GCS-cache read when the user opens
-        # review (a miss there decodes a whole stem — seconds of CPU on the
-        # API instance, which is what wedged it under concurrent load).
-        # The first import pulls in numpy/pydub/matplotlib (seconds of CPU on a
-        # fresh instance) — import it in a worker thread, not on the loop.
-        def _import_audio_analysis():
-            from backend.services.audio_analysis_service import AudioAnalysisService
-            return AudioAnalysisService
-
-        AudioAnalysisService = await asyncio.to_thread(_import_audio_analysis)
-
-        stems = job.file_urls.get("stems", {}) if job.file_urls else {}
-        waveform_source = stems.get("backing_vocals") or job.input_media_gcs_path
-        if waveform_source:
-            try:
-                await asyncio.to_thread(
-                    AudioAnalysisService().get_review_waveform,
-                    waveform_source, job_id, 1000, transcoding,
-                )
-                job_log.info("Review waveform data pre-computed")
-            except Exception as e:
-                # Non-fatal: /waveform-data computes + caches lazily on first open
-                job_log.warning(f"Review waveform pre-compute failed (non-fatal): {e}")
-
-        # Pre-compute the vocals peak envelope too (Waveforms review mode) so
-        # /vocals-peaks is a pure cache read and the per-segment strips paint
-        # sub-second on first open.
-        from backend.utils.stems import vocals_stem_path
-
-        vocals_source = vocals_stem_path(job)
-        if vocals_source:
-            try:
-                await asyncio.to_thread(
-                    AudioAnalysisService().get_vocals_peaks,
-                    vocals_source, job_id, 400, transcoding,
-                )
-                job_log.info("Vocals peak envelope pre-computed")
-            except Exception as e:
-                # Non-fatal: /vocals-peaks computes + caches lazily on first open
-                job_log.warning(f"Vocals peaks pre-compute failed (non-fatal): {e}")
-
-    except Exception as e:
-        # Non-fatal: review UI will fall back to FLAC signed URLs
-        job_log.warning(f"Review audio transcoding failed (non-fatal): {e}")
-        logger.warning(f"Job {job_id}: Review audio transcoding failed: {e}")
+    await prepare_review_assets(job_id, job_manager, job_log)
 
 
 async def _apply_countdown_padding_if_needed(

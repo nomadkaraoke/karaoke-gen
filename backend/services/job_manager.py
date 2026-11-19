@@ -1559,10 +1559,10 @@ class JobManager:
     AUTO_REVIEW_HOLD_KEY = 'auto_review_waiting_for_stems'
 
     def park_review_for_auto_check(self, job_id: str) -> None:
-        """Record that review is held until stems land for the auto-approval re-score."""
+        """Record that review is held until stems land and the review is prepared."""
         self.update_job(job_id, {
             f'state_data.{self.AUTO_REVIEW_HOLD_KEY}': datetime.utcnow().isoformat(),
-            'message': 'Lyrics look good: finishing automatic checks once audio separation is done',
+            'message': 'Preparing review: waiting for audio separation and automatic checks',
         })
 
     def claim_auto_review_hold(self, job_id: str) -> bool:

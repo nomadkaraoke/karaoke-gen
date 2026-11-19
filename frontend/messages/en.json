@@ -661,7 +661,8 @@
     "correcting": "Correcting",
     "lyricsDone": "Lyrics done",
     "lyrics": "Lyrics",
-    "restoringStems": "Restoring audio stems"
+    "restoringStems": "Restoring audio stems",
+    "preparingReview": "Preparing review"
   },
   "jobCard": {
     "actionNeeded": "Action needed",

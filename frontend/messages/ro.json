@@ -648,7 +648,8 @@
     "preparingAudio": "Îți pregătim fișierul audio",
     "processing": "Se procesează",
     "waitingForUpload": "În așteptarea încărcării",
-    "restoringStems": "Se restaurează stem-urile audio"
+    "restoringStems": "Se restaurează stem-urile audio",
+    "preparingReview": "Se pregătește previzualizarea"
   },
   "jobCard": {
     "actionNeeded": "Acțiune necesară",

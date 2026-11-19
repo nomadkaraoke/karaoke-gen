@@ -648,7 +648,8 @@
     "preparingAudio": "Priprema tvog audiozapisa",
     "processing": "Obrada",
     "waitingForUpload": "Čeka se prijenos",
-    "restoringStems": "Vraćanje audio stemova"
+    "restoringStems": "Vraćanje audio stemova",
+    "preparingReview": "Priprema pregleda"
   },
   "jobCard": {
     "actionNeeded": "Potrebna akcija",

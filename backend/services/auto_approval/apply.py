@@ -284,23 +284,38 @@ def apply_all_suggestions(
 
 
 def build_applied_segments(
-    corrections: Dict[str, Any], ai_suggestions: Optional[List[Suggestion]]
+    corrections: Dict[str, Any],
+    ai_suggestions: Optional[List[Suggestion]],
+    *,
+    strict: bool = True,
 ) -> Dict[str, Any]:
-    """Apply the AI suggestions to a corrections payload with the safety gates.
+    """Apply the AI suggestions to a corrections payload.
 
-    Shared by the executor (auto-complete) and the review-gate pre-apply. Returns
-    ``{"aborted": <reason>}`` on any anomaly (caller falls back to human review /
-    client-side apply), else ``{"segments", "applied_ids", "rejected_ids"}``.
+    ``strict=True`` (the executor's auto-complete path): any anomaly returns
+    ``{"aborted": <reason>}`` so the job falls back to human review.
+
+    ``strict=False`` (the pre-apply that runs before a HUMAN opens review):
+    apply exactly what the reviewer would have got from "Accept All". Stale
+    suggestions are skipped and suspicious duplicates are reported in
+    ``warnings``, not treated as fatal, because a human reviews the result.
+    Before this, an abort here left the browser to apply the same suggestions
+    itself on load, which was a second code path (job ae995697, 2026-11-19).
+
+    Success returns ``{"segments", "applied_ids", "rejected_ids", "undo_info",
+    "warnings"}``.
     """
     segments = corrections.get("corrected_segments") or []
     if not segments:
         return {"aborted": "no_segments"}
 
     result = apply_all_suggestions(segments, ai_suggestions or [])
+    warnings: List[str] = []
     if result["stale_ids"]:
         # Nothing edits segments between generation and now, so staleness means
         # the cache doesn't match this corrections.json -> don't trust the apply.
-        return {"aborted": f"stale_suggestions:{len(result['stale_ids'])}"}
+        if strict:
+            return {"aborted": f"stale_suggestions:{len(result['stale_ids'])}"}
+        warnings.append(f"stale_suggestions:{len(result['stale_ids'])}")
 
     new_segments = result["segments"]
     if not new_segments or any(not (s.get("words") or []) for s in new_segments):
@@ -309,13 +324,19 @@ def build_applied_segments(
     duplicates = find_suspicious_duplicates(new_segments, corrections.get("reference_lyrics"))
     if duplicates:
         # P1 signature: overlapping suggestions doubled a word ("you're you're").
-        return {"aborted": f"duplicate_words:{','.join(duplicates[:5])}"}
+        reason = f"duplicate_words:{','.join(duplicates[:5])}"
+        if strict:
+            return {"aborted": reason}
+        warnings.append(reason)
 
     return {
         "segments": new_segments,
         "applied_ids": result["applied_ids"],
-        "rejected_ids": result["rejected_ids"],
+        # Stale suggestions were not applied: report them as rejected so the
+        # review panel shows them as not-applied rather than pending.
+        "rejected_ids": result["rejected_ids"] + result["stale_ids"],
         "undo_info": result["undo_info"],
+        "warnings": warnings,
     }
 
 

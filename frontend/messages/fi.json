@@ -648,7 +648,8 @@
     "preparingAudio": "Valmistellaan ääniraitaasi",
     "processing": "Käsitellään",
     "waitingForUpload": "Odotetaan latausta",
-    "restoringStems": "Palautetaan erillisiä ääniraitoja (stems)"
+    "restoringStems": "Palautetaan erillisiä ääniraitoja (stems)",
+    "preparingReview": "Valmistellaan esikatselua"
   },
   "jobCard": {
     "actionNeeded": "Toimenpiteitä tarvitaan",

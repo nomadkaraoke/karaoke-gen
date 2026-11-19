@@ -38,24 +38,15 @@ interface UseAutoCorrectArgs {
   jobId?: string
   data: CorrectionData
   updateDataWithHistory: (newData: CorrectionData, desc?: string) => void
-  /** Commit data as the new review baseline (collapses undo history). Used for
-   *  the on-load auto-apply so auto-corrections are the starting point, not a
-   *  user "edit" that would trigger a save/restore prompt. */
-  rebaseData?: (newData: CorrectionData) => void
   editLog: EditLog
   getAuthToken: () => string | undefined
-  /** Auto-trigger one run on load (when references exist) so suggestions are
-   *  ready without a click. Normally a cache hit (backend pre-generates). */
-  autoRunOnLoad?: boolean
-  /** After the auto-run completes, immediately apply all suggestions (the
-   *  equivalent of clicking "Accept All") so the reviewer starts from the
-   *  corrected lyrics. Implies autoRunOnLoad. */
-  autoApplyOnLoad?: boolean
   /** Server-side pre-apply (C2): when the backend already applied the AI
    *  corrections before the review-ready notification, the working `data` is the
    *  final state. The hook then seeds the panel in read-only "already applied"
-   *  mode and does NOT auto-run / auto-apply (no in-browser race). The caller
-   *  passes autoRunOnLoad/autoApplyOnLoad = false in this case. */
+   *  mode. The browser never runs or applies suggestions on load by itself:
+   *  the backend applies them before the job reaches review
+   *  (backend/services/auto_approval/pre_apply.py). Without this, the panel
+   *  starts idle and the reviewer can run it by hand. */
   preApplied?: {
     suggestions: AiSuggestion[]
     appliedIds: string[]
@@ -74,11 +65,8 @@ export function useAutoCorrect({
   jobId,
   data,
   updateDataWithHistory,
-  rebaseData,
   editLog,
   getAuthToken,
-  autoRunOnLoad = false,
-  autoApplyOnLoad = false,
   preApplied = null,
 }: UseAutoCorrectArgs) {
   const [status, setStatus] = useState<AutoCorrectStatus>('idle')
@@ -89,11 +77,6 @@ export function useAutoCorrect({
   const [error, setError] = useState<string | null>(null)
   const undoInfos = useRef<Record<string, SuggestionUndoInfo>>({})
   const abortRef = useRef<AbortController | null>(null)
-  // Guards the one-shot auto-run on load. Reset on abort so a request that was
-  // cancelled mid-flight (e.g. React StrictMode's dev double-invoke, or a fast
-  // re-render) re-fires instead of permanently stranding the auto-run.
-  const autoRanRef = useRef(false)
-
   const hasReferences = Object.keys(data.reference_lyrics ?? {}).length > 0
 
   // Abort any in-flight request on unmount so no state updates land after.
@@ -143,9 +126,6 @@ export function useAutoCorrect({
         })
       } catch (err) {
         if ((err as Error).name === 'AbortError') {
-          // Allow the load effect to retry: flipping status back to 'idle' is a
-          // dependency change that re-runs it, and the guard is now clear.
-          autoRanRef.current = false
           setStatus('idle')
           return
         }
@@ -163,17 +143,6 @@ export function useAutoCorrect({
   const cancel = useCallback(() => {
     abortRef.current?.abort()
   }, [])
-
-  // Fire exactly one run on load once references + segments are available.
-  // The ref guard ensures it never re-fires as `data` changes during review
-  // (but is cleared on abort above so a cancelled attempt can retry).
-  useEffect(() => {
-    if (!(autoRunOnLoad || autoApplyOnLoad) || autoRanRef.current) return
-    if (!jobId || status !== 'idle') return
-    if (!hasReferences || !(data.corrected_segments?.length > 0)) return
-    autoRanRef.current = true
-    void run()
-  }, [autoRunOnLoad, autoApplyOnLoad, jobId, status, hasReferences, data.corrected_segments, run])
 
   // Pre-applied mode (C2): the backend already applied the corrections and the
   // working `data` is the final state. Seed the panel to show what was applied
@@ -283,7 +252,7 @@ export function useAutoCorrect({
   )
 
   const acceptAll = useCallback(
-    (asBaseline = false) => {
+    () => {
       let segments = data.corrected_segments
       const newDecisions: Record<string, SuggestionDecision> = { ...decisions }
       // In conflict groups only the winner (highest consensus, then
@@ -311,18 +280,11 @@ export function useAutoCorrect({
         applied += 1
       }
       if (applied > 0) {
-        const next = { ...data, corrected_segments: segments }
-        // On-load auto-apply commits as the review baseline (no undo entry, no
-        // save/restore prompt); a manual "Accept all" is a normal edit.
-        if (asBaseline && rebaseData) {
-          rebaseData(next)
-        } else {
-          updateDataWithHistory(next, 'accept all AI suggestions')
-        }
+        updateDataWithHistory({ ...data, corrected_segments: segments }, 'accept all AI suggestions')
       }
       setDecisions(newDecisions)
     },
-    [suggestions, decisions, data, updateDataWithHistory, rebaseData, logDecision],
+    [suggestions, decisions, data, updateDataWithHistory, logDecision],
   )
 
   // Revert every applied auto-correction back to the original transcription
@@ -353,20 +315,6 @@ export function useAutoCorrect({
     }
     setDecisions(newDecisions)
   }, [suggestions, decisions, data, updateDataWithHistory, logDecision])
-
-  // Auto-apply: once the auto-run lands, apply every suggestion exactly as
-  // "Accept All" would, once. The ref guard survives the data/decisions churn
-  // that acceptAll triggers (each re-creates this callback), and re-runs on a
-  // reload no-op because the re-fetched suggestions are stale → 0 pending.
-  const autoAppliedRef = useRef(false)
-  useEffect(() => {
-    if (!autoApplyOnLoad || autoAppliedRef.current) return
-    if (status !== 'reviewing') return
-    const hasPending = suggestions.some((s) => decisions[s.id] === 'pending')
-    if (!hasPending) return
-    autoAppliedRef.current = true
-    acceptAll(true)
-  }, [autoApplyOnLoad, status, suggestions, decisions, acceptAll])
 
   const rejectAll = useCallback(() => {
     const newDecisions: Record<string, SuggestionDecision> = { ...decisions }

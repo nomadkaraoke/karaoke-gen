@@ -331,6 +331,7 @@ class FirestoreService:
         'state_data.brand_code', 'state_data.youtube_url', 'state_data.dropbox_link',
         'state_data.audio_progress', 'state_data.lyrics_progress',
         'state_data.audio_complete', 'state_data.lyrics_complete',
+        'state_data.auto_review_waiting_for_stems',
         'state_data.backing_vocals_analysis', 'state_data.visibility_change_in_progress',
         'state_data.render_pending_capacity',
         'state_data.cloud_run_retry_pending',

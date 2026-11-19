@@ -648,7 +648,8 @@
     "preparingAudio": "오디오 준비 중",
     "processing": "처리 중",
     "waitingForUpload": "업로드 대기 중",
-    "restoringStems": "오디오 스템 복원 중"
+    "restoringStems": "오디오 스템 복원 중",
+    "preparingReview": "검토 준비 중"
   },
   "jobCard": {
     "actionNeeded": "조치 필요",

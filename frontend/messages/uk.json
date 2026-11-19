@@ -648,7 +648,8 @@
     "preparingAudio": "Готуємо твоє аудіо",
     "processing": "Обробка",
     "waitingForUpload": "Очікування завантаження",
-    "restoringStems": "Відновлення окремих аудіодоріжок"
+    "restoringStems": "Відновлення окремих аудіодоріжок",
+    "preparingReview": "Підготовка до перегляду"
   },
   "jobCard": {
     "actionNeeded": "Потрібна дія",

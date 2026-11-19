@@ -648,7 +648,8 @@
     "preparingAudio": "جارٍ تجهيز الصوت",
     "processing": "قيد المعالجة",
     "waitingForUpload": "بانتظار الرفع",
-    "restoringStems": "جارٍ استعادة مسارات الصوت المنفصلة (stems)"
+    "restoringStems": "جارٍ استعادة مسارات الصوت المنفصلة (stems)",
+    "preparingReview": "جارٍ إعداد المراجعة"
   },
   "jobCard": {
     "actionNeeded": "إجراء مطلوب",

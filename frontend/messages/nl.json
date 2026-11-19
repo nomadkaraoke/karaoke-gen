@@ -648,7 +648,8 @@
     "preparingAudio": "Je audio voorbereiden",
     "processing": "Verwerken",
     "waitingForUpload": "Wachten op upload",
-    "restoringStems": "Audiostems herstellen"
+    "restoringStems": "Audiostems herstellen",
+    "preparingReview": "Review voorbereiden"
   },
   "jobCard": {
     "actionNeeded": "Actie vereist",
