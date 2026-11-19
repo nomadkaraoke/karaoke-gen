@@ -91,7 +91,10 @@ async def route_after_scoring(
     auto_result = await _rescore_if_suggestions_were_missing(job_id, auto_result, job_log)
     if auto_result.get("outcome") in ("auto_completed", "wrong_status"):
         return str(auto_result["outcome"])
-    if _stems_ready(job_manager.get_job(job_id)) or not _audio_hold_enabled():
+    job = job_manager.get_job(job_id)
+    if not job:
+        return "wrong_status"
+    if _stems_ready(job) or not _audio_hold_enabled():
         await enter_human_review(job_id, job_log, job_manager)
         return "review"
 

@@ -54,3 +54,19 @@ async def test_failures_are_non_fatal():
     jm = MagicMock()
     jm.get_job.side_effect = RuntimeError("firestore down")
     await prepare_review_assets("j1", jm)  # must not raise
+
+
+@pytest.mark.asyncio
+async def test_transcode_failure_still_caches_waveforms():
+    jm = MagicMock()
+    jm.get_job.return_value = _job({"backing_vocals": "b.flac", "vocals_clean": "v.flac"})
+    transcoding = MagicMock()
+    transcoding.prepare_review_audio_for_job.side_effect = RuntimeError("ffmpeg")
+    analysis = MagicMock()
+    with patch("backend.services.audio_transcoding_service.AudioTranscodingService",
+               return_value=transcoding), \
+         patch("backend.services.audio_analysis_service.AudioAnalysisService",
+               return_value=analysis):
+        await prepare_review_assets("j1", jm)
+    analysis.get_review_waveform.assert_called_once()
+    analysis.get_vocals_peaks.assert_called_once()

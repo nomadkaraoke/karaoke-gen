@@ -39,8 +39,12 @@ async def prepare_review_assets(job_id: str, job_manager=None, job_log: Optional
         # apiece) — this ran ON the event loop and froze the whole instance for
         # 10-45s per job (2026-10-03 analysis). Run it in a worker thread.
         transcoding = AudioTranscodingService()
-        transcoded = await asyncio.to_thread(transcoding.prepare_review_audio_for_job, job)
-        log.info(f"Review audio transcoding complete: {len(transcoded)} files")
+        try:
+            transcoded = await asyncio.to_thread(transcoding.prepare_review_audio_for_job, job)
+            log.info(f"Review audio transcoding complete: {len(transcoded)} files")
+        except Exception as e:
+            # The waveforms below don't depend on it: carry on.
+            log.warning(f"Review audio transcoding failed (non-fatal): {e}")
 
         # The first import pulls in numpy/pydub/matplotlib (seconds of CPU on a
         # fresh instance) — import it in a worker thread, not on the loop.

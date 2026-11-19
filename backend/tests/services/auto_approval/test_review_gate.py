@@ -315,3 +315,14 @@ async def test_suggestion_generation_not_repeated_before_parking() -> None:
     out, _, _ = await _route_without_suggestions(jm, {"outcome": "review"}, wait=wait)
     assert out == "held"
     assert wait.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_missing_job_is_not_parked_or_opened() -> None:
+    jm = _jm(None)
+    out, _, pre = await _call(review_gate.route_after_scoring, jm, "j1",
+                              {"outcome": "review", "ai_suggestions_available": True})
+    assert out == "wrong_status"
+    jm.park_review_for_auto_check.assert_not_called()
+    jm.transition_to_state.assert_not_called()
+    pre.assert_not_awaited()
