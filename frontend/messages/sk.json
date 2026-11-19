@@ -648,7 +648,8 @@
     "preparingAudio": "Pripravuje sa tvoje audio",
     "processing": "Spracováva sa",
     "waitingForUpload": "Čaká sa na nahranie",
-    "restoringStems": "Obnovujú sa zvukové stopy"
+    "restoringStems": "Obnovujú sa zvukové stopy",
+    "preparingReview": "Pripravuje sa kontrola"
   },
   "jobCard": {
     "actionNeeded": "Vyžaduje sa akcia",

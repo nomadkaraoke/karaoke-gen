@@ -1,6 +1,6 @@
-"""Tests for the review gate: holding lyrics-confident jobs out of review until
-stems land, and releasing them exactly once (audio worker / screens worker race /
-stuck-job sweep)."""
+"""Tests for the review gate: holding every job out of review until stems land
+and the review is fully prepared, and releasing it exactly once (audio worker /
+screens worker race / stuck-job sweep)."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -20,8 +20,12 @@ def _job(status=JobStatus.GENERATING_SCREENS, **state):
 
 
 def _jm(*jobs, claim=True):
+    """Job manager whose get_job returns ``jobs`` in order (default: stems ready)."""
     jm = MagicMock()
-    jm.get_job.side_effect = list(jobs)
+    if jobs:
+        jm.get_job.side_effect = list(jobs)
+    else:
+        jm.get_job.return_value = _job(audio_complete=True)
     jm.claim_auto_review_hold.return_value = claim
     return jm
 
@@ -33,18 +37,22 @@ def _patches(jm, auto_result=None, pre_apply=None):
               AsyncMock(return_value=auto_result or {"outcome": "review"})),
         patch("backend.services.auto_approval.pre_apply.ensure_and_pre_apply",
               AsyncMock(return_value=pre_apply or {"outcome": "skipped"})),
+        patch("backend.services.review_assets.prepare_review_assets", AsyncMock()),
     )
 
 
 async def _call(fn, jm, *args, auto_result=None, **kwargs):
-    p1, p2, p3 = _patches(jm, auto_result)
-    with p1, p2 as auto, p3 as pre:
+    p1, p2, p3, p4 = _patches(jm, auto_result)
+    with p1, p2 as auto, p3 as pre, p4:
         out = await fn(*args, **kwargs)
     return out, auto, pre
 
 
+NOT_READY = dict(audio_complete=False)
+
+
 @pytest.mark.asyncio
-async def test_no_hold_opens_review_with_pre_apply() -> None:
+async def test_stems_ready_opens_review_with_pre_apply() -> None:
     jm = _jm()
     out, auto, pre = await _call(review_gate.route_after_scoring, jm, "j1", {"outcome": "review"})
     assert out == "review"
@@ -56,7 +64,7 @@ async def test_no_hold_opens_review_with_pre_apply() -> None:
 
 @pytest.mark.asyncio
 async def test_hold_parks_job_without_opening_review() -> None:
-    jm = _jm(_job(audio_complete=False))
+    jm = _jm(_job(**NOT_READY), _job(**NOT_READY))
     out, auto, pre = await _call(
         review_gate.route_after_scoring, jm, "j1", {"outcome": "review", "hold_for_audio": True})
     assert out == "held"
@@ -70,7 +78,7 @@ async def test_hold_parks_job_without_opening_review() -> None:
 async def test_stems_landing_while_parking_rescores_immediately() -> None:
     # Audio finished between scoring and parking: the screens worker claims the
     # hold itself (the audio worker already ran its release and found no flag).
-    jm = _jm(_job(audio_complete=True), _job(audio_complete=True))
+    jm = _jm(_job(**NOT_READY), _job(audio_complete=True), _job(audio_complete=True))
     out, auto, _ = await _call(
         review_gate.route_after_scoring, jm, "j1", {"outcome": "review", "hold_for_audio": True},
         auto_result={"outcome": "auto_completed"})
@@ -80,7 +88,7 @@ async def test_stems_landing_while_parking_rescores_immediately() -> None:
 
 @pytest.mark.asyncio
 async def test_stems_landing_while_parking_but_audio_worker_claimed() -> None:
-    jm = _jm(_job(audio_complete=True), claim=False)
+    jm = _jm(_job(**NOT_READY), _job(audio_complete=True), claim=False)
     out, auto, _ = await _call(
         review_gate.route_after_scoring, jm, "j1", {"outcome": "review", "hold_for_audio": True})
     assert out == "released_elsewhere"
@@ -140,9 +148,9 @@ def test_audio_hold_expiry() -> None:
 @pytest.mark.asyncio
 async def test_rescore_crash_after_claim_falls_back_to_review() -> None:
     jm = _jm(_job(), _job())
-    p1, p2, p3 = _patches(jm)
+    p1, p2, p3, p4 = _patches(jm)
     with p1, patch("backend.services.auto_approval.executor.maybe_auto_complete_review",
-                   AsyncMock(side_effect=RuntimeError("boom"))), p3:
+                   AsyncMock(side_effect=RuntimeError("boom"))), p3, p4:
         out = await review_gate.release_audio_hold("j1", reason="audio_worker")
     assert out == "review"
     assert jm.transition_to_state.call_args.kwargs["new_status"] == JobStatus.AWAITING_REVIEW
@@ -177,7 +185,7 @@ async def _route_without_suggestions(jm, rescored, wait=None):
 @pytest.mark.asyncio
 async def test_missing_suggestions_rescore_holds_instead_of_notifying() -> None:
     """Job 7f89f884: the "review your lyrics" push went out minutes before auto-approval."""
-    jm = _jm(_job(audio_complete=False))
+    jm = _jm(_job(**NOT_READY), _job(**NOT_READY))
     out, auto, pre = await _route_without_suggestions(
         jm, {"outcome": "review", "hold_for_audio": True, "ai_suggestions_available": True})
     assert out == "held"
@@ -233,3 +241,77 @@ async def test_suggestions_present_scores_only_once() -> None:
         {"outcome": "review", "ai_suggestions_available": True})
     assert out == "review"
     auto.assert_not_awaited()
+
+
+# ---- 2026-11-19: every job is held until it is fully prepared ----
+
+
+@pytest.mark.asyncio
+async def test_review_verdict_is_held_until_stems_land() -> None:
+    """Job ae995697 (a Made For You order, lyrics phantom-gated): the review button
+    appeared at 18:29 while the stems, backing verdict and vocal waveform only
+    existed from 18:32. A job a human must review is held like any other."""
+    jm = _jm(_job(**NOT_READY), _job(**NOT_READY))
+    out, _, pre = await _call(
+        review_gate.route_after_scoring, jm, "j1",
+        {"outcome": "review", "hold_for_audio": False, "ai_suggestions_available": True})
+    assert out == "held"
+    jm.park_review_for_auto_check.assert_called_once_with("j1")
+    jm.transition_to_state.assert_not_called()
+    pre.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_hold_kill_switch_opens_review_without_stems() -> None:
+    jm = _jm(_job(**NOT_READY))
+    with patch("backend.config.get_settings",
+               return_value=SimpleNamespace(auto_approval_audio_hold_enabled=False)):
+        out, _, pre = await _call(
+            review_gate.route_after_scoring, jm, "j1",
+            {"outcome": "review", "ai_suggestions_available": True})
+    assert out == "review"
+    pre.assert_awaited_once_with("j1")
+    jm.park_review_for_auto_check.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_enter_human_review_prepares_everything_before_the_button() -> None:
+    """AI corrections are applied and the review assets cached BEFORE the
+    AWAITING_REVIEW transition (which is what shows the review button)."""
+    order = []
+    jm = MagicMock()
+    jm.transition_to_state.side_effect = lambda **kw: order.append("transition")
+    pre = AsyncMock(side_effect=lambda *a, **k: order.append("pre_apply") or {"outcome": "pre_applied"})
+    assets = AsyncMock(side_effect=lambda *a, **k: order.append("assets"))
+    with patch("backend.services.auto_approval.pre_apply.ensure_and_pre_apply", pre), \
+            patch("backend.services.review_assets.prepare_review_assets", assets):
+        await review_gate.enter_human_review("j1", None, jm)
+    assert order == ["pre_apply", "assets", "transition"]
+    assets.assert_awaited_once_with("j1", jm, None)
+
+
+@pytest.mark.asyncio
+async def test_suggestions_generated_on_api_service_before_parking() -> None:
+    """The hold is released in the audio-separation job, which has no LLM
+    credentials, so the screens worker makes sure the suggestions exist first."""
+    jm = _jm(_job(**NOT_READY), _job(**NOT_READY))
+    wait = AsyncMock()
+    with patch("backend.workers.auto_correct_worker.process_proactive_auto_correct", wait), \
+            patch("backend.config.get_settings",
+                  return_value=SimpleNamespace(auto_correct_proactive_enabled=True)):
+        out, auto, _ = await _call(
+            review_gate.route_after_scoring, jm, "j1",
+            {"outcome": "auto_completed_blocked", "ai_suggestions_available": False})
+    assert out == "held"
+    wait.assert_awaited_once_with("j1")
+    auto.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_suggestion_generation_not_repeated_before_parking() -> None:
+    """When the rescore path already waited (and failed), don't wait again."""
+    jm = _jm(_job(**NOT_READY), _job(**NOT_READY))
+    wait = AsyncMock(side_effect=RuntimeError("llm down"))
+    out, _, _ = await _route_without_suggestions(jm, {"outcome": "review"}, wait=wait)
+    assert out == "held"
+    assert wait.await_count == 1

@@ -648,7 +648,8 @@
     "preparingAudio": "Forbereder lyden din",
     "processing": "Behandler",
     "waitingForUpload": "Venter på opplasting",
-    "restoringStems": "Gjenoppretter lydspor"
+    "restoringStems": "Gjenoppretter lydspor",
+    "preparingReview": "Klargjør gjennomgang"
   },
   "jobCard": {
     "actionNeeded": "Handling kreves",

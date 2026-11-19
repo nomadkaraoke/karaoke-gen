@@ -11,6 +11,7 @@ from typing import Any, Dict, List
 from backend.services.auto_approval.apply import (
     apply_all_suggestions,
     apply_suggestion,
+    build_applied_segments,
     find_suspicious_duplicates,
     is_suggestion_stale,
     pick_accept_all_winners,
@@ -245,3 +246,46 @@ def test_duplicates_supported_by_reference_are_ok() -> None:
     refs = {"genius": {"segments": [{"text": "Hey hey you"}]}}
     assert find_suspicious_duplicates(segments, refs) == []
     assert find_suspicious_duplicates(segments, {}) == ["hey"]
+
+
+# --- build_applied_segments: strict (auto-ship) vs non-strict (human review) ---
+
+
+def _p1_conflict() -> List[Dict[str, Any]]:
+    return [_sug("insert_after", ["w3"], "you're", id="a"),
+            _sug("replace", ["w3"], "fire, you're", id="b")]
+
+
+def test_strict_aborts_on_duplicates() -> None:
+    out = build_applied_segments({"corrected_segments": _segments()}, _p1_conflict())
+    assert out["aborted"].startswith("duplicate_words:")
+
+
+def test_non_strict_applies_duplicates_as_warning() -> None:
+    """Human-review pre-apply: same result as the UI's "Accept All", plus a warning."""
+    out = build_applied_segments({"corrected_segments": _segments()}, _p1_conflict(), strict=False)
+    assert "aborted" not in out
+    assert out["applied_ids"] == ["a", "b"]
+    assert out["warnings"] == ["duplicate_words:you're"]
+
+
+def test_strict_aborts_on_stale() -> None:
+    out = build_applied_segments({"corrected_segments": _segments()},
+                                 [_sug("replace", ["nope"], "x", id="a")])
+    assert out["aborted"] == "stale_suggestions:1"
+
+
+def test_non_strict_skips_stale_and_applies_the_rest() -> None:
+    out = build_applied_segments(
+        {"corrected_segments": _segments()},
+        [_sug("replace", ["nope"], "x", id="stale"), _sug("replace", ["w3"], "flame", id="ok")],
+        strict=False,
+    )
+    assert out["applied_ids"] == ["ok"]
+    assert "stale" in out["rejected_ids"]
+    assert out["warnings"] == ["stale_suggestions:1"]
+    assert out["segments"][0]["words"][3]["text"] == "flame"
+
+
+def test_non_strict_still_aborts_without_segments() -> None:
+    assert build_applied_segments({"corrected_segments": []}, [], strict=False) == {"aborted": "no_segments"}

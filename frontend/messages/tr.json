@@ -648,7 +648,8 @@
     "preparingAudio": "Ses dosyan hazırlanıyor",
     "processing": "İşleniyor",
     "waitingForUpload": "Yükleme bekleniyor",
-    "restoringStems": "Ses kanalları geri yükleniyor"
+    "restoringStems": "Ses kanalları geri yükleniyor",
+    "preparingReview": "İnceleme hazırlanıyor"
   },
   "jobCard": {
     "actionNeeded": "Eylem gerekiyor",

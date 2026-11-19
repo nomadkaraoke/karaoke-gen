@@ -226,6 +226,19 @@ export function getJobStep(job: Job): JobStep {
     };
   }
 
+  // Screens are done but the review is held until audio separation, the
+  // auto-approval re-score, AI corrections and review waveforms are all ready
+  // (backend/services/auto_approval/review_gate.py). No button until then.
+  if (status === "generating_screens" && job.state_data?.auto_review_waiting_for_stems) {
+    return {
+      step: 5,
+      total: TOTAL_STEPS,
+      label: "preparingReview",
+      isBlocking: false,
+      color: "text-cyan-400",
+    };
+  }
+
   // Signed-URL upload jobs sit in "pending" until the browser finishes PUTting
   // the audio to GCS. "Setting up" implies we're working on it; we're not —
   // we're waiting on the submitting tab.

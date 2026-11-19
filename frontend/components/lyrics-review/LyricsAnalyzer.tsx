@@ -281,18 +281,12 @@ export default function LyricsAnalyzer({
     [history, historyIndex]
   )
 
-  // Collapse history to a single baseline entry (used by the on-load auto-apply
-  // so auto-corrections are the starting point, not an undoable "edit").
-  const rebaseHistory = useCallback((next: CorrectionData) => {
-    setHistory([next])
-    setHistoryIndex(0)
-  }, [])
-
   // Server-side pre-apply (C2): when the backend applied the AI corrections
   // before the review-ready notification, `initialData` already carries them and
   // marks `metadata.auto_approval.pre_applied`. In that case the UI must NOT
-  // auto-run/auto-apply again (no in-browser race) — it just displays what was
-  // applied. Keyed on the marker only (not live edits) so it doesn't churn.
+  // run/apply anything itself — it just displays what was applied. The browser
+  // never auto-applies: the backend does it before review opens (pre_apply.py).
+  // Keyed on the marker only (not live edits) so it doesn't churn.
   const preApplied = useMemo(() => {
     const m = initialData.metadata?.auto_approval
     if (isReadOnly || isLocalMode || !m?.pre_applied || !Array.isArray(m.suggestions)) return null
@@ -309,23 +303,15 @@ export default function LyricsAnalyzer({
     jobId,
     data,
     updateDataWithHistory,
-    rebaseData: rebaseHistory,
     editLog,
     getAuthToken: () => getAccessToken() ?? undefined,
-    // Auto-run + auto-apply once on load so the reviewer starts from the
-    // corrected lyrics (= clicking "Accept All"). The backend pre-generates +
-    // caches suggestions during lyrics processing, so this is normally an
-    // instant cache hit. Skipped in read-only / local mode, and only when a
-    // jobId exists (the request needs one). Also skipped when the server already
-    // pre-applied (C2) — the corrections are already in the loaded data.
-    autoRunOnLoad: !isReadOnly && !isLocalMode && Boolean(jobId) && !preApplied,
-    autoApplyOnLoad: !isReadOnly && !isLocalMode && Boolean(jobId) && !preApplied,
     preApplied,
   })
 
-  // Late stems: review opens as soon as LYRICS finish, but audio separation usually
-  // lands 2-3 minutes later — so the page-load data often has no instrumental stems
-  // or backing analysis. Poll until separation completes and overlay the fresh
+  // Late stems: review is normally held until the stems land (review_gate.py), so
+  // this is a backstop for jobs released by the 20-minute hold timeout, or that
+  // reached review before the hold covered every job. Poll until separation
+  // completes and overlay the fresh
   // stems / analysis / auto-approval verdict, so the finish modal's instrumental
   // chooser appears without a reload. Kept OUT of `data` (history/undo, saved
   // sessions, and the preview render all key off it).

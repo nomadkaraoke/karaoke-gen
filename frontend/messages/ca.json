@@ -648,7 +648,8 @@
     "preparingAudio": "Preparant el teu àudio",
     "processing": "Processant",
     "waitingForUpload": "Esperant la pujada",
-    "restoringStems": "Restaurant les pistes d'àudio"
+    "restoringStems": "Restaurant les pistes d'àudio",
+    "preparingReview": "Preparant la revisió"
   },
   "jobCard": {
     "actionNeeded": "Acció necessària",

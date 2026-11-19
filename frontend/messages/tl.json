@@ -648,7 +648,8 @@
     "preparingAudio": "Inihahanda ang iyong audio",
     "processing": "Pinoproseso",
     "waitingForUpload": "Naghihintay ng pag-upload",
-    "restoringStems": "Ipinapanumbalik ang audio stems"
+    "restoringStems": "Ipinapanumbalik ang audio stems",
+    "preparingReview": "Inihahanda ang review"
   },
   "jobCard": {
     "actionNeeded": "Kailangan ng aksyon",

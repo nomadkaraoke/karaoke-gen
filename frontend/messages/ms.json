@@ -648,7 +648,8 @@
     "preparingAudio": "Menyediakan audio anda",
     "processing": "Memproses",
     "waitingForUpload": "Menunggu muat naik",
-    "restoringStems": "Memulihkan stem audio"
+    "restoringStems": "Memulihkan stem audio",
+    "preparingReview": "Menyediakan semakan"
   },
   "jobCard": {
     "actionNeeded": "Tindakan diperlukan",

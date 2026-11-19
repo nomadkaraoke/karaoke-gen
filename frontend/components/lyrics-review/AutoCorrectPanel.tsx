@@ -104,7 +104,7 @@ export default function AutoCorrectPanel({
               auto-applied) keep their bulk controls. */}
           {!isReadOnly && pendingCount > 0 && (
             <>
-              <Button size="sm" variant="outline" onClick={() => acceptAll(false)}>
+              <Button size="sm" variant="outline" onClick={() => acceptAll()}>
                 <Check className="h-3.5 w-3.5 mr-1" />
                 {t('acceptAll')}
               </Button>

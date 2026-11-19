@@ -648,7 +648,8 @@
     "preparingAudio": "Подготовка твоего аудио",
     "processing": "Обработка",
     "waitingForUpload": "Ожидание загрузки",
-    "restoringStems": "Восстановление аудиодорожек (стэмов)"
+    "restoringStems": "Восстановление аудиодорожек (стэмов)",
+    "preparingReview": "Подготовка к просмотру"
   },
   "jobCard": {
     "actionNeeded": "Требуется действие",

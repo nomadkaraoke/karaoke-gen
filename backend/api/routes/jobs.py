@@ -566,6 +566,7 @@ _SUMMARY_STATE_DATA_KEYS = {
     'brand_code', 'youtube_url', 'dropbox_link',
     'audio_progress', 'lyrics_progress',
     'audio_complete', 'lyrics_complete',
+    'auto_review_waiting_for_stems',
     'backing_vocals_analysis', 'visibility_change_in_progress',
     'render_pending_capacity',
     'cloud_run_retry_pending',

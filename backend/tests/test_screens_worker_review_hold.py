@@ -1,6 +1,6 @@
-"""Screens worker + review gate: a lyrics-confident job whose stems are still
-separating is held in GENERATING_SCREENS (no review link, no notification)
-instead of opening review. See backend/services/auto_approval/review_gate.py."""
+"""Screens worker + review gate: a job whose stems are still separating is held
+in GENERATING_SCREENS (no review link, no notification) instead of opening
+review, whatever the lyrics verdict. See backend/services/auto_approval/review_gate.py."""
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
@@ -45,7 +45,8 @@ async def _run_screens(auto_result, *, audio_complete):
          patch.object(sw, "_apply_countdown_padding_if_needed", side_effect=noop), \
          patch.object(sw, "_transcode_review_audio", side_effect=noop), \
          patch("backend.services.auto_approval.executor.maybe_auto_complete_review", side_effect=auto), \
-         patch("backend.services.auto_approval.pre_apply.ensure_and_pre_apply", pre_apply):
+         patch("backend.services.auto_approval.pre_apply.ensure_and_pre_apply", pre_apply), \
+         patch("backend.services.review_assets.prepare_review_assets", side_effect=noop):
         assert await sw.generate_screens("j1") is True, jm.mark_job_failed.call_args
     return jm, pre_apply
 
@@ -65,8 +66,18 @@ async def test_held_job_does_not_open_review():
 
 
 @pytest.mark.asyncio
-async def test_unheld_job_opens_review_as_before():
-    jm, pre_apply = await _run_screens({"outcome": "review"}, audio_complete=False)
+async def test_job_needing_human_review_is_also_held_until_stems_land():
+    jm, pre_apply = await _run_screens(
+        {"outcome": "review", "hold_for_audio": False, "ai_suggestions_available": True},
+        audio_complete=False)
+    jm.park_review_for_auto_check.assert_called_once_with("j1")
+    assert _review_transitions(jm) == []
+    pre_apply.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_job_with_stems_ready_opens_review():
+    jm, pre_apply = await _run_screens({"outcome": "review"}, audio_complete=True)
     jm.park_review_for_auto_check.assert_not_called()
     assert len(_review_transitions(jm)) == 1
     pre_apply.assert_called_once()

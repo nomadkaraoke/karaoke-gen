@@ -648,7 +648,8 @@
     "preparingAudio": "正在准备您的音频",
     "processing": "处理中",
     "waitingForUpload": "等待上传",
-    "restoringStems": "正在恢复音频分轨"
+    "restoringStems": "正在恢复音频分轨",
+    "preparingReview": "正在准备审核"
   },
   "jobCard": {
     "actionNeeded": "需要操作",

@@ -648,7 +648,8 @@
     "preparingAudio": "Hanganyagod előkészítése",
     "processing": "Feldolgozás",
     "waitingForUpload": "Várakozás a feltöltésre",
-    "restoringStems": "Hangsávok (stemek) visszaállítása"
+    "restoringStems": "Hangsávok (stemek) visszaállítása",
+    "preparingReview": "Áttekintés előkészítése"
   },
   "jobCard": {
     "actionNeeded": "Művelet szükséges",

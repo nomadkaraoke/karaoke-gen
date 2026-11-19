@@ -648,7 +648,8 @@
     "preparingAudio": "Préparation de ton audio",
     "processing": "Traitement en cours",
     "waitingForUpload": "En attente de téléversement",
-    "restoringStems": "Restauration des stems audio"
+    "restoringStems": "Restauration des stems audio",
+    "preparingReview": "Préparation de l'aperçu"
   },
   "jobCard": {
     "actionNeeded": "Action requise",
