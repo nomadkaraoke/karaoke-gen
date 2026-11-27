@@ -1870,8 +1870,10 @@ async def stripe_webhook(
                 logger.warning(f"Failed to store payment data for {session_id}: {store_err}")
 
             # Tell Andrew what this payment was and whether he needs to act (never raises)
-            pay_notify.send_payment_notification(
-                email_service, notify_session, payment_outcome, payment_outcome_detail
+            # Off the event loop: email delivery can retry/fall back to SMTP for seconds.
+            await asyncio.to_thread(
+                pay_notify.send_payment_notification,
+                email_service, notify_session, payment_outcome, payment_outcome_detail,
             )
 
             admin_service.log_webhook_event(

@@ -184,7 +184,7 @@ def send_payment_notification(
             f'<p><a href="{html.escape(url)}">View in Stripe</a> &middot; '
             f"session {html.escape(str(session.get('id', '')))}</p>"
         )
-        return bool(
+        sent = bool(
             email_service.send_email(
                 to_email=to_email,
                 subject=notice.subject,
@@ -192,6 +192,9 @@ def send_payment_notification(
                 text_content=text,
             )
         )
+        if not sent:
+            logger.warning(f"Payment notification not sent for {session.get('id')}: {notice.subject}")
+        return sent
     except Exception as e:  # best-effort: never let a notification break payment handling
         logger.warning(f"Payment notification failed for {session.get('id')}: {e}")
         return False

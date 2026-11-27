@@ -194,3 +194,11 @@ async def test_webhook_redelivery_sends_no_second_email():
     us.is_stripe_session_processed.return_value = True
     await _run_webhook(_tip_session(), MagicMock(), us, email)
     email.send_email.assert_not_called()
+
+
+def test_rejected_send_logs_warning(caplog):
+    email = MagicMock()
+    email.send_email.return_value = False
+    with caplog.at_level(logging.WARNING):
+        assert pn.send_payment_notification(email, _tip_session(), pn.OUTCOME_NON_GEN) is False
+    assert any("not sent" in r.message and r.levelno == logging.WARNING for r in caplog.records)
