@@ -1768,8 +1768,14 @@ async def stripe_webhook(
                 )
                 return {"status": "received", "type": event_type, "note": "already_processed"}
 
+            # What happened, for the "[No action]/[Action needed]" payment email
+            from backend.services import payment_notification as pay_notify
+            payment_outcome = pay_notify.OUTCOME_CREDITS_FAILED
+            payment_outcome_detail = None
+
             # Check if this is a made-for-you order
             if not StripeService.is_gen_checkout(session):
+                payment_outcome = pay_notify.OUTCOME_NON_GEN
                 # Not created by gen (e.g. a Stripe Payment Link tip): nothing to
                 # fulfil, but the payment is still stored below for revenue.
                 logger.info(
@@ -1785,7 +1791,8 @@ async def stripe_webhook(
                     amount=0,
                 )
             elif metadata.get("order_type") == "made_for_you":
-                # Handle made-for-you order - create a job
+                # Handle made-for-you order - create a job (it sends its own admin email)
+                payment_outcome = pay_notify.OUTCOME_MADE_FOR_YOU
                 await _handle_made_for_you_order(
                     session_id=session_id,
                     metadata=metadata,
@@ -1794,7 +1801,9 @@ async def stripe_webhook(
                 )
             else:
                 # Handle regular credit purchase
-                success, user_email, credits, _ = stripe_service.handle_checkout_completed(session)
+                success, user_email, credits, checkout_msg = stripe_service.handle_checkout_completed(session)
+                if not success:
+                    payment_outcome_detail = checkout_msg
 
                 if success and user_email and credits > 0:
                     # Add credits to user account
@@ -1806,6 +1815,7 @@ async def stripe_webhook(
                     )
 
                     if ok:
+                        payment_outcome = pay_notify.OUTCOME_CREDITS_ADDED
                         # Send confirmation email
                         email_service.send_credits_added(user_email, credits, new_balance)
                         logger.info(f"Added {credits} credits to {user_email}, new balance: {new_balance}")
@@ -1830,6 +1840,7 @@ async def stripe_webhook(
                         except Exception as ref_err:
                             logger.warning(f"Referral earning recording failed: {ref_err}")
                     else:
+                        payment_outcome_detail = credit_msg
                         logger.error(f"Failed to add credits: {credit_msg}")
 
             # Update user's cached total_spent (non-blocking)
@@ -1846,15 +1857,24 @@ async def stripe_webhook(
                     logger.warning(f"Failed to update total_spent for {customer_email}: {spend_err}")
 
             # Store enriched payment data (non-blocking - failure won't break credit granting)
+            notify_session = session
             try:
                 import stripe as stripe_lib
                 expanded_session = stripe_lib.checkout.Session.retrieve(
                     session_id,
                     expand=["payment_intent.latest_charge.balance_transaction", "line_items"],
                 )
-                admin_service.store_payment(dict(expanded_session))
+                notify_session = dict(expanded_session)
+                admin_service.store_payment(notify_session)
             except Exception as store_err:
                 logger.warning(f"Failed to store payment data for {session_id}: {store_err}")
+
+            # Tell Andrew what this payment was and whether he needs to act (never raises)
+            # Off the event loop: email delivery can retry/fall back to SMTP for seconds.
+            await asyncio.to_thread(
+                pay_notify.send_payment_notification,
+                email_service, notify_session, payment_outcome, payment_outcome_detail,
+            )
 
             admin_service.log_webhook_event(
                 event_id=event_id,
