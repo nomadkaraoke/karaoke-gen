@@ -149,9 +149,24 @@ Two Stripe Payment Links predate gen. Neither is in code; they were shared by ha
 | Link | Product | Status |
 |------|---------|--------|
 | `https://buy.stripe.com/dR67sx4wZcdt2DC9AA` (`plink_1PSsYyJqOK5vtxo4A1gBQUUO`) | "Custom Karaoke Video" $10 + optional $5 tip: the old nomadkaraoke.com "Buy Video" order form | **Deactivated 2026-10-14.** It now shows an `inactive_message` pointing to gen.nomadkaraoke.com (self-serve or Made For You). |
-| `https://buy.stripe.com/00geUZgfHdhx6TS001` (`plink_1R08pkJqOK5vtxo4qf1Sqq6v`) | "Custom Karaoke Service", customer-entered amount | **Active.** Used for tips: nomadkaraoke.com/tip, `pay.nomadkaraoke.com` (Cloudflare redirect), and the kjbox singer UI "Card / Apple Pay" tip button. |
+| `https://buy.stripe.com/00geUZgfHdhx6TS001` (`plink_1R08pkJqOK5vtxo4qf1Sqq6v`) | "Tip for Nomad Karaoke" (`prod_RtwjaZJwu3mtxm`, renamed from "Custom Karaoke Service" via the API on 2026-11-27), customer-entered amount | **Active.** Used for tips: nomadkaraoke.com/tip, `pay.nomadkaraoke.com` (Cloudflare redirect), and the kjbox singer UI "Card / Apple Pay" tip button. |
 
 Why `dR67sx` was deactivated: the last sale on it was 2025-12-23. From 2025-12-31 to 2026-10-08 it opened about 30 checkout sessions, and none completed. Andrew had emailed the link to regulars as "my order form", so returning customers kept landing on a $10 manual order that is no longer fulfilled. To undo: `POST /v1/payment_links/plink_1PSsYyJqOK5vtxo4A1gBQUUO active=true`.
+
+## Payment notification emails
+
+Stripe's own "Payment of $X from Y" email can't tell a tip from an order. So for every `checkout.session.completed`, the webhook sends one email to `ADMIN_NOTIFICATION_EMAIL` (default admin@nomadkaraoke.com) saying what the payment was. The subject starts with `[No action]` or `[Action needed]`. The code is in `backend/services/payment_notification.py`.
+
+| Payment | Subject |
+|---------|---------|
+| Tip link (`TIP_PAYMENT_LINK_IDS`), no note | `[No action] Tip: $5.00 from Name` |
+| Tip link with a note in "Any other notes / comments" | `[Action needed] Tip link payment: … with a note` (people sometimes pay for songs through it) |
+| Any other non-gen checkout / Payment Link | `[Action needed] Payment: … not a gen order` |
+| Credit purchase, credits added | `[No action] Credits bought: …` (shows any checkout tip) |
+| Credit purchase where credits were NOT added | `[Action needed] Credits NOT added: …` |
+| Made For You | none here: it already sends its own admin email |
+
+Redelivered events are skipped by the idempotency check, so they send no second email. A failure to send is logged as a WARNING and never breaks the webhook. With these emails live, Stripe's "Successful payment receipt" emails (Dashboard → Settings → Communication preferences) are redundant.
 
 ## Checkout Tip (optional add-on)
 
