@@ -414,3 +414,27 @@ class TestPreviewWithMutes:
         )
         
         assert os.path.exists(output_path)
+
+
+class TestBackingVocalsMixLevel:
+    """Backing vocals are mixed in quieter than the clean instrumental."""
+
+    def test_backing_vocals_attenuated_in_custom_instrumental(self, loud_audio_path, temp_dir):
+        from karaoke_gen.mix_levels import BACKING_VOCALS_MIX_GAIN, BACKING_VOCALS_MIX_GAIN_DB
+
+        silent = AudioSegment.silent(duration=len(AudioSegment.from_file(loud_audio_path)), frame_rate=44100)
+        silent_path = os.path.join(temp_dir, "silent_instrumental.flac")
+        silent.export(silent_path, format="flac")
+        output_path = os.path.join(temp_dir, "custom.flac")
+
+        AudioEditor().create_custom_instrumental(
+            clean_instrumental_path=silent_path,
+            backing_vocals_path=loud_audio_path,
+            mute_regions=[],
+            output_path=output_path,
+        )
+
+        original = AudioSegment.from_file(loud_audio_path)
+        output = AudioSegment.from_file(output_path)
+        assert BACKING_VOCALS_MIX_GAIN < 1
+        assert output.dBFS == pytest.approx(original.dBFS + BACKING_VOCALS_MIX_GAIN_DB, abs=0.5)
