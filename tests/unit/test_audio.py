@@ -288,3 +288,19 @@ class TestAudio:
         # Test with non-existing file
         with patch('os.path.isfile', return_value=False):
             assert basic_karaoke_gen.file_handler._file_exists("non_existing_file.txt") is False
+
+
+def test_combined_instrumental_attenuates_backing_vocals(basic_karaoke_gen, temp_dir):
+    """The +BV mix weights backing vocals at BACKING_VOCALS_MIX_GAIN, not level with the instrumental."""
+    from karaoke_gen.mix_levels import BACKING_VOCALS_MIX_GAIN
+
+    processor = basic_karaoke_gen.audio_processor
+    with patch.object(processor, "_file_exists", return_value=False), \
+         patch("os.system") as mock_system:
+        processor._generate_combined_instrumentals(
+            "/x/inst.flac", {"bv_model.ckpt": {"backing_vocals": "/x/bv.flac"}}, "A - T", temp_dir
+        )
+
+    cmd = mock_system.call_args[0][0]
+    assert BACKING_VOCALS_MIX_GAIN < 1
+    assert f"weights=1 {BACKING_VOCALS_MIX_GAIN}" in cmd

@@ -11,6 +11,8 @@ import errno
 import psutil
 from datetime import datetime
 
+from karaoke_gen.mix_levels import BACKING_VOCALS_MIX_GAIN
+
 # audio_separator (and its torch/onnxruntime/librosa graph, ~3s) and pydub are
 # imported lazily so that merely importing this module stays cheap — the backend
 # imports it at startup via backend.workers.audio_worker (cold-start work,
@@ -905,7 +907,7 @@ class AudioProcessor:
             if not self._file_exists(combined_path):
                 ffmpeg_command = (
                     f'{self.ffmpeg_base_command} -i "{instrumental_path}" -i "{backing_vocals_path}" '
-                    f'-filter_complex "[0:a][1:a]amix=inputs=2:duration=longest:weights=1 1" '
+                    f'-filter_complex "[0:a][1:a]amix=inputs=2:duration=longest:weights=1 {BACKING_VOCALS_MIX_GAIN}" '
                     f'-c:a {self.lossless_output_format.lower()} "{combined_path}"'
                 )
 

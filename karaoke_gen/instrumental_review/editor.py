@@ -13,6 +13,8 @@ from typing import List, Optional
 
 from pydub import AudioSegment
 
+from karaoke_gen.mix_levels import BACKING_VOCALS_MIX_GAIN_DB
+
 from .models import CustomInstrumentalResult, MuteRegion
 
 
@@ -129,8 +131,10 @@ class AudioEditor:
         )
         
         # Combine: clean instrumental + edited backing vocals
-        # The backing vocals are mixed on top of the clean instrumental
-        combined = clean_instrumental.overlay(edited_backing)
+        # The backing vocals are mixed on top of the clean instrumental,
+        # attenuated so they sit behind the instrumental (same level as the
+        # "Instrumental +BV" track built by AudioProcessor).
+        combined = clean_instrumental.overlay(edited_backing.apply_gain(BACKING_VOCALS_MIX_GAIN_DB))
         
         # Ensure output directory exists
         output_dir = Path(output_path).parent
