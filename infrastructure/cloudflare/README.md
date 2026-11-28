@@ -13,7 +13,7 @@ only app-specific stacks (e.g. karaoke-decide's Cloud Run + its API-proxy Worker
 | Module | Resources |
 |---|---|
 | `zones.py` | The 5 zones (**protected**) and the `ssl` mode of each |
-| `dns.py` | 84 DNS records across all zones (exclusions below) |
+| `dns.py` | 76 DNS records across all zones (exclusions below), including every zone's SPF/DMARC. Who may send mail as Nomad domains, and the DMARC rollout state, are in the workspace's `docs/EMAIL-AUTH.md` |
 | `rulesets.py` | Zone ruleset entrypoints: dynamic redirects (all zones), config settings + origin rules (nomadkaraoke.com: flacfetch), karaokehunt.com's custom WAF rule |
 | `email_routing.py` | Gmail destination address; Email Routing enablement (**protected**), catch-all and `google@` rules for nomadkaraoke.com, nomadkaroke.com, karaokehunt.com |
 | `tunnels.py` | `nomad-kjbox` (NomadPC: sing, kjbox, kjssh, kjvnc) and `nomad-hf2` (fiverrbot) tunnels (**protected**) + ingress |
@@ -35,6 +35,13 @@ on the next `pulumi up`, and `pulumi preview` always shows that first.
 | karaokehunt.com `http_config_settings` ("SSL for create.karaokehunt.com", "Disable challenge for create API") | Dashboard. pulumi-cloudflare 6.22.1 drops `set_config bic:false`, so every refresh fails |
 | Tunnel connector tokens / cloudflared processes | NomadPC systemd `cloudflared-nomad`, hf2 `~/nomad-tunnel` compose |
 | Registrar, billing, API tokens, account members | Dashboard (admin@nomadkaraoke.com) |
+
+## Email auth (SPF / DMARC) and Cloudflare DMARC Management
+
+`_dmarc` and apex SPF records live in `dns.py`. Cloudflare **DMARC Management** (enabled on every zone,
+API only) rewrites a zone's `_dmarc` record when it's turned on. For a new zone, create the `_dmarc`
+record here first, then enable it. Keep each zone's CF `rua` prefix in the record, or reports stop.
+Sender inventory and the tightening plan: workspace `docs/EMAIL-AUTH.md`.
 
 ## kjbox.cc app-link files
 
